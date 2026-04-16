@@ -1,0 +1,62 @@
+:root {
+	--cafe-primary: #2d3550;
+	--cafe-secondary: #dd6c20;
+	--cafe-accent: #f3c375;
+	--cafe-bg: #f7f8ff;
+	--cafe-card: #ffffff;
+}
+
+html,
+body {
+	margin: 0;
+	min-height: 100%;
+	font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+	background: var(--cafe-bg);
+	color: #25304b;
+}
+
+* {
+	box-sizing: border-box;
+}
+
+.brand-banner {
+	display: flex;
+	align-items: center;
+	gap: 0.75rem;
+	margin-bottom: 1rem;
+}
+
+.brand-banner img {
+	width: 44px;
+	height: 44px;
+	border-radius: 12px;
+	box-shadow: 0 8px 16px rgba(221, 108, 32, 0.2);
+}
+
+.brand-banner .title {
+	font-size: 1.15rem;
+	font-weight: 800;
+	color: var(--cafe-primary);
+}
+
+.brand-banner .subtitle {
+	font-size: 0.85rem;
+	color: #66708e;
+}
+
+/* Material overlay/readability fixes */
+.cdk-overlay-pane .mat-mdc-select-panel {
+	background: #ffffff !important;
+	color: #25304b;
+	border: 1px solid #e8ebf7;
+	box-shadow: 0 16px 30px rgba(40, 51, 86, 0.14);
+}
+
+.mat-mdc-option .mdc-list-item__primary-text {
+	white-space: normal;
+	line-height: 1.25rem;
+}
+
+.mat-mdc-form-field-infix {
+	min-height: 56px;
+}
