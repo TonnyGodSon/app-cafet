@@ -42,6 +42,13 @@
             "styles": [
               "src/styles.scss"
             ],
+            "allowedCommonJsDependencies": [
+              "canvg",
+              "core-js",
+              "raf",
+              "rgbcolor",
+              "jspdf"
+            ],
             "outputMode": "server",
             "security": {
               "allowedHosts": []
