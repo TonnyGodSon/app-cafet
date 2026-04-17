@@ -10,8 +10,6 @@ import { Observable, firstValueFrom } from 'rxjs';
 import { selectActiveSale, selectActiveSaleCode } from '../../store/sales/sales.selectors';
 import { SaleService, OrderService } from '../../core/services';
 import * as AuthActions from '../../store/auth/auth.actions';
-import { jsPDF } from 'jspdf';
-import autoTable from 'jspdf-autotable';
 import { Order, Sale } from '../../core/models';
 
 @Component({
@@ -186,6 +184,9 @@ export class CloseSaleComponent implements OnInit {
     this.errorMessage = '';
 
     try {
+      const { jsPDF } = await import('jspdf');
+      const autoTable = (await import('jspdf-autotable')).default;
+
       const saleCode = await firstValueFrom(this.saleCode$);
       const activeSale = await firstValueFrom(this.activeSale$);
 
