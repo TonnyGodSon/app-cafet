@@ -4,13 +4,11 @@
 
 1. In Render, create a new Web Service from this repo.
 2. Render will detect [render.yaml](render.yaml) automatically.
-3. In the service settings, set these required secrets:
-   - `SPRING_DATASOURCE_URL`
-   - `SPRING_DATASOURCE_USERNAME`
-   - `SPRING_DATASOURCE_PASSWORD`
+3. The Blueprint will create the PostgreSQL database (`app-cafet-db`) automatically and wire credentials to the backend.
+4. In the service settings, set only this required variable manually:
    - `APP_CORS_ALLOWED_ORIGINS` (set this to your Vercel domain, for example `https://your-app.vercel.app`)
-4. Trigger deploy.
-5. Verify health: `https://<your-render-service>.onrender.com/api/auth/users`
+5. Trigger deploy.
+6. Verify health: `https://<your-render-service>.onrender.com/api/auth/users`
 
 ## 2) Deploy Frontend on Vercel
 
@@ -28,4 +26,5 @@ After Vercel gives your final domain, update `APP_CORS_ALLOWED_ORIGINS` on Rende
 
 - Backend listens on `PORT` automatically.
 - PostgreSQL driver is included in backend runtime dependencies.
+- Docker startup converts Render `DATABASE_URL` to Spring `SPRING_DATASOURCE_URL` automatically.
 - H2 console is disabled in production via environment variables.

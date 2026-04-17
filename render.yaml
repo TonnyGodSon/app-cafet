@@ -1,3 +1,7 @@
+databases:
+  - name: app-cafet-db
+    plan: free
+
 services:
   - type: web
     name: app-cafet-api
@@ -19,9 +23,15 @@ services:
         value: "false"
       - key: APP_CORS_ALLOWED_ORIGINS
         sync: false
-      - key: SPRING_DATASOURCE_URL
-        sync: false
+      - key: DATABASE_URL
+        fromDatabase:
+          name: app-cafet-db
+          property: connectionString
       - key: SPRING_DATASOURCE_USERNAME
-        sync: false
+        fromDatabase:
+          name: app-cafet-db
+          property: user
       - key: SPRING_DATASOURCE_PASSWORD
-        sync: false
+        fromDatabase:
+          name: app-cafet-db
+          property: password
