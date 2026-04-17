@@ -3,6 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
 import { Sale, SaleDisplay } from '../models';
 import { catchError, map } from 'rxjs/operators';
+import { environment } from '../../../environments/environment';
 
 type SaleApiItem = {
   productName: string;
@@ -24,7 +25,7 @@ type SaleApiResponse = {
   providedIn: 'root'
 })
 export class SaleService {
-  private apiUrl = 'http://localhost:8080/api/sales';
+  private apiUrl = `${environment.apiBaseUrl}/sales`;
 
   constructor(private http: HttpClient) {}
 
