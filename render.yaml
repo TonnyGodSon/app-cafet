@@ -1,11 +1,10 @@
 services:
   - type: web
     name: app-cafet-api
-    runtime: java
-    rootDir: cafeteria-backend
+    runtime: docker
+    dockerfilePath: cafeteria-backend/Dockerfile
+    dockerContext: cafeteria-backend
     plan: free
-    buildCommand: mvn clean package -DskipTests
-    startCommand: java -jar target/cafeteria-backend-1.0.0.jar
     healthCheckPath: /api/auth/users
     envVars:
       - key: SPRING_PROFILES_ACTIVE
