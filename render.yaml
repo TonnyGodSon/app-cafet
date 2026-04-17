@@ -1,0 +1,28 @@
+services:
+  - type: web
+    name: app-cafet-api
+    runtime: java
+    rootDir: cafeteria-backend
+    plan: free
+    buildCommand: mvn clean package -DskipTests
+    startCommand: java -jar target/cafeteria-backend-1.0.0.jar
+    healthCheckPath: /api/auth/users
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: production
+      - key: SPRING_DATASOURCE_DRIVER_CLASS_NAME
+        value: org.postgresql.Driver
+      - key: SPRING_JPA_DATABASE_PLATFORM
+        value: org.hibernate.dialect.PostgreSQLDialect
+      - key: SPRING_JPA_HIBERNATE_DDL_AUTO
+        value: update
+      - key: SPRING_H2_CONSOLE_ENABLED
+        value: "false"
+      - key: APP_CORS_ALLOWED_ORIGINS
+        sync: false
+      - key: SPRING_DATASOURCE_URL
+        sync: false
+      - key: SPRING_DATASOURCE_USERNAME
+        sync: false
+      - key: SPRING_DATASOURCE_PASSWORD
+        sync: false
