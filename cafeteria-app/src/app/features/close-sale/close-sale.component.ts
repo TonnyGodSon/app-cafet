@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, PLATFORM_ID } from '@angular/core';
+import { Component, OnInit, inject, PLATFORM_ID, ChangeDetectorRef } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { Store } from '@ngrx/store';
@@ -49,22 +49,31 @@ type PaymentMethodLabel = 'CB' | 'PayPal' | 'Wero' | 'Espèces';
               color="primary"
               class="full-width"
               (click)="onGeneratePDF()"
-              [disabled]="isLoading"
+              [disabled]="isPdfLoading || isExcelLoading"
             >
-              <mat-icon *ngIf="!isLoading">picture_as_pdf</mat-icon>
-              <mat-spinner *ngIf="isLoading" diameter="20"></mat-spinner>
+              <mat-icon *ngIf="!isPdfLoading">picture_as_pdf</mat-icon>
+              <mat-spinner *ngIf="isPdfLoading" diameter="20"></mat-spinner>
               Générer Rapport PDF
             </button>
 
             <button
               mat-raised-button
               color="accent"
-              class="full-width"
-              (click)="onSendEmail()"
-              [disabled]="isLoading"
+              class="full-width excel-btn"
+              (click)="onGenerateExcel()"
+              [disabled]="isPdfLoading || isExcelLoading"
             >
-              <mat-icon *ngIf="!isLoading">mail</mat-icon>
-              <mat-spinner *ngIf="isLoading" diameter="20"></mat-spinner>
+              <mat-icon *ngIf="!isExcelLoading">table_chart</mat-icon>
+              <mat-spinner *ngIf="isExcelLoading" diameter="20"></mat-spinner>
+              Générer Rapport Excel
+            </button>
+
+            <button
+              mat-raised-button
+              class="full-width mail-btn"
+              (click)="onSendEmail()"
+            >
+              <mat-icon>mail</mat-icon>
               Envoyer par Mail
             </button>
 
@@ -132,6 +141,16 @@ type PaymentMethodLabel = 'CB' | 'PayPal' | 'Wero' | 'Espèces';
       font-size: 1rem;
     }
 
+    .excel-btn {
+      background-color: #1d7a45 !important;
+      color: #fff !important;
+    }
+
+    .mail-btn {
+      background-color: #5b6bbf !important;
+      color: #fff !important;
+    }
+
     .success-message {
       color: #4caf50;
       background-color: #f1f8f4;
@@ -159,11 +178,13 @@ export class CloseSaleComponent implements OnInit {
   private readonly saleService = inject(SaleService);
   private readonly orderService = inject(OrderService);
   private readonly platformId = inject(PLATFORM_ID);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   saleCode$!: Observable<string | null>;
   activeSale$!: Observable<Sale | null>;
   totalOrders$!: Observable<number>;
-  isLoading = false;
+  isPdfLoading = false;
+  isExcelLoading = false;
   successMessage = '';
   errorMessage = '';
 
@@ -182,7 +203,7 @@ export class CloseSaleComponent implements OnInit {
   }
 
   async onGeneratePDF() {
-    this.isLoading = true;
+    this.isPdfLoading = true;
     this.successMessage = '';
     this.errorMessage = '';
 
@@ -195,7 +216,7 @@ export class CloseSaleComponent implements OnInit {
 
       if (!saleCode) {
         this.errorMessage = 'Aucune vente active trouvée.';
-        this.isLoading = false;
+        this.isPdfLoading = false;
         return;
       }
 
@@ -452,15 +473,188 @@ export class CloseSaleComponent implements OnInit {
 
       doc.save(`rapport_vente_${saleCode}.pdf`);
       this.successMessage = 'Rapport PDF généré et téléchargé avec succès!';
-      this.isLoading = false;
+      this.isPdfLoading = false;
+      this.cdr.detectChanges();
     } catch (error) {
       this.errorMessage = 'Erreur lors de la génération du PDF';
-      this.isLoading = false;
+      this.isPdfLoading = false;
+      this.cdr.detectChanges();
+    }
+  }
+
+  async onGenerateExcel() {
+    if (!isPlatformBrowser(this.platformId)) return;
+    this.isExcelLoading = true;
+    this.successMessage = '';
+    this.errorMessage = '';
+
+    try {
+      const ExcelJS = await import('exceljs');
+      const saleCode = await firstValueFrom(this.saleCode$);
+      const activeSale = await firstValueFrom(this.activeSale$);
+
+      if (!saleCode) {
+        this.errorMessage = 'Aucune vente active trouvée.';
+        this.isExcelLoading = false;
+        this.cdr.detectChanges();
+        return;
+      }
+
+      const orders = await firstValueFrom(this.orderService.getOrdersBySaleCode(saleCode));
+      const sellerFallback = activeSale?.sellerName || '-';
+      const paymentMethods: PaymentMethodLabel[] = ['CB', 'PayPal', 'Wero', 'Espèces'];
+      const formatMoney = (v: number) => parseFloat(v.toFixed(2));
+
+      const getBreakdownEntries = (order: Order): Array<[PaymentMethodLabel, number]> => {
+        const record = order.paymentBreakdown || {};
+        return paymentMethods
+          .map((method) => [method, Number(record[method] || 0)] as [PaymentMethodLabel, number])
+          .filter(([, amount]) => amount > 0);
+      };
+
+      const paymentDisplay = (order: Order): string => {
+        if (order.paymentMethod !== 'Mixte') return order.paymentMethod;
+        const entries = getBreakdownEntries(order);
+        if (entries.length === 0) return 'Mixte';
+        return `Mixte (${entries.map(([m, a]) => `${m} ${a.toFixed(2)}€`).join(' | ')})`;
+      };
+
+      const workbook = new ExcelJS.Workbook();
+      workbook.creator = 'CaFaith Normandie';
+      workbook.created = new Date();
+
+      const addSheetWithTable = (
+        sheetName: string,
+        columns: { header: string; key: string; width: number }[],
+        rows: Record<string, string | number>[],
+        headerArgb: string
+      ) => {
+        const sheet = workbook.addWorksheet(sheetName);
+        sheet.columns = columns;
+        sheet.getRow(1).eachCell((cell) => {
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: headerArgb } };
+          cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+          cell.alignment = { vertical: 'middle', horizontal: 'center' };
+        });
+        rows.forEach(row => sheet.addRow(row));
+        sheet.getRow(1).height = 20;
+      };
+
+      // Feuille 1 : Détail commandes
+      addSheetWithTable('Commandes', [
+        { header: 'Client', key: 'client', width: 20 },
+        { header: 'Articles', key: 'articles', width: 50 },
+        { header: 'Total (€)', key: 'total', width: 15 },
+        { header: 'Paiement', key: 'paiement', width: 30 },
+        { header: 'Vendeur', key: 'vendeur', width: 20 }
+      ], orders.map(o => ({
+        client: o.customerFirstName || '-',
+        articles: o.items.map(i => `${i.quantity}x ${i.productName}`).join(', ') || '-',
+        total: formatMoney(o.totalPrice),
+        paiement: paymentDisplay(o),
+        vendeur: o.sellerName || sellerFallback
+      })), 'FF34495E');
+
+      // Agrégats
+      const salesBySeller: Record<string, number> = {};
+      const salesByPayment: Record<string, number> = {};
+      const paymentCountByMethod: Record<string, number> = { CB: 0, PayPal: 0, Wero: 0, 'Espèces': 0 };
+      const dishCounts: Record<string, number> = {};
+      const drinkCounts: Record<string, number> = {};
+      const dessertCounts: Record<string, number> = {};
+      let totalRevenue = 0;
+
+      orders.forEach(order => {
+        const seller = order.sellerName || sellerFallback;
+        salesBySeller[seller] = (salesBySeller[seller] || 0) + order.totalPrice;
+        const entries = getBreakdownEntries(order);
+        if (entries.length > 0) {
+          entries.forEach(([method, amount]) => {
+            salesByPayment[method] = (salesByPayment[method] || 0) + amount;
+            paymentCountByMethod[method] = (paymentCountByMethod[method] || 0) + 1;
+          });
+        } else {
+          const m = order.paymentMethod as string;
+          salesByPayment[m] = (salesByPayment[m] || 0) + order.totalPrice;
+          if (m in paymentCountByMethod) paymentCountByMethod[m] = (paymentCountByMethod[m] || 0) + 1;
+        }
+        totalRevenue += order.totalPrice;
+        order.items.forEach(item => {
+          if (item.category === 'dish') dishCounts[item.productName] = (dishCounts[item.productName] || 0) + item.quantity;
+          if (item.category === 'drink') drinkCounts[item.productName] = (drinkCounts[item.productName] || 0) + item.quantity;
+          if (item.category === 'dessert') dessertCounts[item.productName] = (dessertCounts[item.productName] || 0) + item.quantity;
+        });
+      });
+
+      const toRows = (rec: Record<string, number>) =>
+        Object.entries(rec).sort((a, b) => b[1] - a[1]).map(([label, value]) => ({ label, value }));
+
+      addSheetWithTable('Ventes par vendeur', [
+        { header: 'Vendeur', key: 'label', width: 30 },
+        { header: 'Montant (€)', key: 'value', width: 20 }
+      ], toRows(salesBySeller), 'FF2980B9');
+
+      addSheetWithTable('Par moyen de paiement', [
+        { header: 'Moyen de paiement', key: 'label', width: 30 },
+        { header: 'Montant (€)', key: 'value', width: 20 }
+      ], toRows(salesByPayment), 'FF27AE60');
+
+      addSheetWithTable('Nombre de paiements', [
+        { header: 'Moyen de paiement', key: 'label', width: 30 },
+        { header: 'Nombre', key: 'value', width: 20 }
+      ], toRows(paymentCountByMethod), 'FF16A085');
+
+      addSheetWithTable('Plats vendus', [
+        { header: 'Plat', key: 'label', width: 30 },
+        { header: 'Quantité', key: 'value', width: 20 }
+      ], toRows(dishCounts), 'FF8E44AD');
+
+      addSheetWithTable('Boissons vendues', [
+        { header: 'Boisson', key: 'label', width: 30 },
+        { header: 'Quantité', key: 'value', width: 20 }
+      ], toRows(drinkCounts), 'FFD35400');
+
+      addSheetWithTable('Desserts vendus', [
+        { header: 'Dessert', key: 'label', width: 30 },
+        { header: 'Quantité', key: 'value', width: 20 }
+      ], toRows(dessertCounts), 'FFC0392B');
+
+      // Récapitulatif
+      const summarySheet = workbook.addWorksheet('Récapitulatif');
+      summarySheet.columns = [
+        { header: 'Indicateur', key: 'label', width: 35 },
+        { header: 'Valeur', key: 'value', width: 20 }
+      ];
+      summarySheet.getRow(1).eachCell(cell => {
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF2C3E50' } };
+        cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        cell.alignment = { vertical: 'middle', horizontal: 'center' };
+      });
+      summarySheet.addRow({ label: 'Code vente', value: saleCode });
+      summarySheet.addRow({ label: 'Date', value: this.getCurrentDate() });
+      summarySheet.addRow({ label: 'Nombre de commandes', value: orders.length });
+      summarySheet.addRow({ label: 'Recette du jour (€)', value: formatMoney(totalRevenue) });
+
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `rapport_vente_${saleCode}.xlsx`;
+      a.click();
+      URL.revokeObjectURL(url);
+
+      this.successMessage = 'Rapport Excel généré et téléchargé avec succès!';
+      this.isExcelLoading = false;
+      this.cdr.detectChanges();
+    } catch (error) {
+      this.errorMessage = 'Erreur lors de la génération du fichier Excel';
+      this.isExcelLoading = false;
+      this.cdr.detectChanges();
     }
   }
 
   onSendEmail() {
-    if (!isPlatformBrowser(this.platformId)) return;
 
     const today = new Date();
     const dateFormatted = today.toLocaleDateString('fr-FR', {
