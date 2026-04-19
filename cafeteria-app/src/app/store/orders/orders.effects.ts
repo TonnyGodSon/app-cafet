@@ -17,12 +17,13 @@ export class OrdersEffects {
     this.actions$.pipe(
       ofType(OrdersActions.submitOrder),
       withLatestFrom(this.store.select(selectOrderItems)),
-      switchMap(([{ saleCode, customerFirstName, paymentMethod }, items]) => {
+      switchMap(([{ saleCode, customerFirstName, paymentMethod, paymentBreakdown }, items]) => {
         return this.orderService.createOrder(
           saleCode,
           items,
           paymentMethod,
-          customerFirstName
+          customerFirstName,
+          paymentBreakdown
         ).pipe(
           map((order) => OrdersActions.submitOrderSuccess({ order })),
           catchError((error) =>

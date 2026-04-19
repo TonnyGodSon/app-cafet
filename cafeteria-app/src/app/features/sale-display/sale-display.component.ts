@@ -15,7 +15,7 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { Observable, firstValueFrom } from 'rxjs';
 import { selectActiveSale, selectActiveSaleCode } from '../../store/sales/sales.selectors';
 import { selectOrderItems, selectOrderTotal } from '../../store/orders/orders.selectors';
-import { MOCK_DISHES, MOCK_DRINKS, MOCK_DESSERTS, OrderItem, PaymentMethod, SaleItemWithSpecs } from '../../core/models';
+import { MOCK_DISHES, MOCK_DRINKS, MOCK_DESSERTS, OrderItem, PaymentBreakdown, PaymentMethod, SaleItemWithSpecs } from '../../core/models';
 import * as OrdersActions from '../../store/orders/orders.actions';
 
 interface MenuDisplayItem {
@@ -697,6 +697,17 @@ export class SaleDisplayComponent implements OnInit {
     return 'Mixte';
   }
 
+  private buildPaymentBreakdown(): PaymentBreakdown {
+    const breakdown: PaymentBreakdown = {};
+    this.paymentMethods.forEach((method) => {
+      const entry = this.paymentState[method];
+      if (entry.selected && entry.amount > 0) {
+        breakdown[method] = Number(entry.amount.toFixed(2));
+      }
+    });
+    return breakdown;
+  }
+
   paymentIcon(method: PaymentOption): string {
     if (method === 'CB') return 'credit_card';
     if (method === 'PayPal') return 'account_balance_wallet';
@@ -731,7 +742,8 @@ export class SaleDisplayComponent implements OnInit {
       OrdersActions.submitOrder({
         saleCode,
         customerFirstName: this.customerFirstName.trim(),
-        paymentMethod: this.resolvePaymentMethod()
+        paymentMethod: this.resolvePaymentMethod(),
+        paymentBreakdown: this.buildPaymentBreakdown()
       })
     );
     this.snackBar.open('Commande validée avec succès.', 'OK', { duration: 2600 });

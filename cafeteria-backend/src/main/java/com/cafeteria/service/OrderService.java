@@ -4,12 +4,16 @@ import com.cafeteria.dto.*;
 import com.cafeteria.entity.Order;
 import com.cafeteria.entity.OrderItem;
 import com.cafeteria.entity.Sale;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.cafeteria.repository.OrderRepository;
 import com.cafeteria.repository.SaleRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import java.time.format.DateTimeFormatter;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -17,6 +21,7 @@ import java.util.stream.Collectors;
 public class OrderService {
     private final OrderRepository orderRepository;
     private final SaleRepository saleRepository;
+        private final ObjectMapper objectMapper;
 
     public OrderDTO createOrder(CreateOrderRequest request) {
         Sale sale = saleRepository.findBySaleCode(request.getSaleCode())
@@ -34,6 +39,7 @@ public class OrderService {
                 .sale(sale)
                 .customerFirstName(request.getCustomerFirstName().trim())
                 .paymentMethod(request.getPaymentMethod())
+                .paymentBreakdownJson(serializePaymentBreakdown(request.getPaymentBreakdown()))
                 .totalPrice(totalPrice)
                 .build();
 
@@ -76,9 +82,32 @@ public class OrderService {
                                 .build())
                         .collect(Collectors.toList()))
                 .paymentMethod(order.getPaymentMethod())
+                                .paymentBreakdown(deserializePaymentBreakdown(order.getPaymentBreakdownJson()))
                 .totalPrice(order.getTotalPrice())
                 .createdAt(order.getCreatedAt().format(
                         DateTimeFormatter.ISO_DATE_TIME))
                 .build();
     }
+
+        private String serializePaymentBreakdown(Map<String, Double> paymentBreakdown) {
+                if (paymentBreakdown == null || paymentBreakdown.isEmpty()) {
+                        return null;
+                }
+                try {
+                        return objectMapper.writeValueAsString(paymentBreakdown);
+                } catch (Exception ex) {
+                        throw new RuntimeException("Unable to serialize payment breakdown", ex);
+                }
+        }
+
+        private Map<String, Double> deserializePaymentBreakdown(String paymentBreakdownJson) {
+                if (paymentBreakdownJson == null || paymentBreakdownJson.isBlank()) {
+                        return Collections.emptyMap();
+                }
+                try {
+                        return objectMapper.readValue(paymentBreakdownJson, new TypeReference<Map<String, Double>>() {});
+                } catch (Exception ex) {
+                        return Collections.emptyMap();
+                }
+        }
 }

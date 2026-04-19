@@ -1,4 +1,6 @@
 export type PaymentMethod = 'CB' | 'PayPal' | 'Wero' | 'Espèces' | 'Mixte';
+export type PaymentSplitMethod = 'CB' | 'PayPal' | 'Wero' | 'Espèces';
+export type PaymentBreakdown = Partial<Record<PaymentSplitMethod, number>>;
 
 export interface OrderItem {
   productId: string;
@@ -15,6 +17,7 @@ export interface Order {
   sellerName?: string;
   items: OrderItem[];
   paymentMethod: PaymentMethod;
+  paymentBreakdown?: PaymentBreakdown;
   totalPrice: number;
   createdAt: Date;
 }

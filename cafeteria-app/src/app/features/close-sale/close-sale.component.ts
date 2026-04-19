@@ -12,6 +12,8 @@ import { SaleService, OrderService } from '../../core/services';
 import * as AuthActions from '../../store/auth/auth.actions';
 import { Order, Sale } from '../../core/models';
 
+type PaymentMethodLabel = 'CB' | 'PayPal' | 'Wero' | 'Espèces';
+
 @Component({
   selector: 'app-close-sale',
   standalone: true,
@@ -226,6 +228,30 @@ export class CloseSaleComponent implements OnInit {
       };
 
       const pageWidth = doc.internal.pageSize.getWidth();
+      const paymentMethods: PaymentMethodLabel[] = ['CB', 'PayPal', 'Wero', 'Espèces'];
+
+      const getBreakdownEntries = (order: Order): Array<[PaymentMethodLabel, number]> => {
+        const record = order.paymentBreakdown || {};
+        return paymentMethods
+          .map((method) => [method, Number(record[method] || 0)] as [PaymentMethodLabel, number])
+          .filter(([, amount]) => amount > 0);
+      };
+
+      const paymentDisplay = (order: Order) => {
+        if (order.paymentMethod !== 'Mixte') {
+          return order.paymentMethod;
+        }
+
+        const entries = getBreakdownEntries(order);
+        if (entries.length === 0) {
+          return 'Mixte';
+        }
+
+        const details = entries
+          .map(([method, amount]) => `${method} ${formatMoney(amount)}`)
+          .join(' | ');
+        return `Mixte (${details})`;
+      };
 
       const drawFoodLogo = (x: number, y: number) => {
         doc.setFillColor(255, 207, 135);
@@ -260,7 +286,7 @@ export class CloseSaleComponent implements OnInit {
             order.customerFirstName || '-',
             itemLabel(order),
             formatMoney(order.totalPrice),
-            order.paymentMethod,
+            paymentDisplay(order),
             order.sellerName || sellerFallback
           ])
         : [['Aucune commande', '-', '-', '-', '-']];
@@ -289,6 +315,12 @@ export class CloseSaleComponent implements OnInit {
 
       const salesBySeller: Record<string, number> = {};
       const salesByPayment: Record<string, number> = {};
+      const paymentCountByMethod: Record<string, number> = {
+        CB: 0,
+        PayPal: 0,
+        Wero: 0,
+        Espèces: 0
+      };
       const dishCounts: Record<string, number> = {};
       const drinkCounts: Record<string, number> = {};
       const dessertCounts: Record<string, number> = {};
@@ -298,7 +330,21 @@ export class CloseSaleComponent implements OnInit {
       orders.forEach((order) => {
         const sellerName = order.sellerName || sellerFallback;
         salesBySeller[sellerName] = (salesBySeller[sellerName] || 0) + order.totalPrice;
-        salesByPayment[order.paymentMethod] = (salesByPayment[order.paymentMethod] || 0) + order.totalPrice;
+
+        const splitEntries = getBreakdownEntries(order);
+        if (splitEntries.length > 0) {
+          splitEntries.forEach(([method, amount]) => {
+            salesByPayment[method] = (salesByPayment[method] || 0) + amount;
+            paymentCountByMethod[method] = (paymentCountByMethod[method] || 0) + 1;
+          });
+        } else {
+          const method = order.paymentMethod as string;
+          salesByPayment[method] = (salesByPayment[method] || 0) + order.totalPrice;
+          if (method in paymentCountByMethod) {
+            paymentCountByMethod[method] = (paymentCountByMethod[method] || 0) + 1;
+          }
+        }
+
         totalRevenue += order.totalPrice;
 
         order.items.forEach((item) => {
@@ -342,6 +388,19 @@ export class CloseSaleComponent implements OnInit {
 
       autoTable(doc, {
         startY: getNextY(70),
+        head: [['Nombre de paiements par moyen de paiement', 'Nombre']],
+        body: buildRows(paymentCountByMethod),
+        theme: 'striped',
+        styles: { fontSize: 9, cellPadding: 2 },
+        headStyles: { fillColor: [22, 160, 133], textColor: 255, fontStyle: 'bold' },
+        columnStyles: {
+          0: { cellWidth: 120 },
+          1: { cellWidth: 50, halign: 'right' }
+        }
+      });
+
+      autoTable(doc, {
+        startY: getNextY(80),
         head: [['Nombre de plats vendus par plat', 'Quantité']],
         body: buildRows(dishCounts),
         theme: 'striped',
@@ -354,7 +413,7 @@ export class CloseSaleComponent implements OnInit {
       });
 
       autoTable(doc, {
-        startY: getNextY(80),
+        startY: getNextY(90),
         head: [['Nombre de boissons vendues par type de boisson', 'Quantité']],
         body: buildRows(drinkCounts),
         theme: 'striped',
@@ -367,7 +426,7 @@ export class CloseSaleComponent implements OnInit {
       });
 
       autoTable(doc, {
-        startY: getNextY(90),
+        startY: getNextY(100),
         head: [['Nombre de desserts vendus par type de dessert', 'Quantité']],
         body: buildRows(dessertCounts),
         theme: 'striped',
@@ -380,7 +439,7 @@ export class CloseSaleComponent implements OnInit {
       });
 
       autoTable(doc, {
-        startY: getNextY(100),
+        startY: getNextY(110),
         head: [['Recette du jour']],
         body: [[formatMoney(totalRevenue)]],
         theme: 'grid',

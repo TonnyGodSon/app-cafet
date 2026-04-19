@@ -29,6 +29,9 @@ public class Order {
     @Column(nullable = false)
     private String paymentMethod; // CB, PayPal, Wero, Espèces
 
+    @Column(columnDefinition = "TEXT")
+    private String paymentBreakdownJson;
+
     @Column(nullable = false)
     private Double totalPrice;
 

@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
-import { Order, OrderItem, PaymentMethod } from '../models';
+import { Order, OrderItem, PaymentBreakdown, PaymentMethod } from '../models';
 import { catchError } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
 
@@ -17,7 +17,8 @@ export class OrderService {
     saleCode: string,
     items: OrderItem[],
     paymentMethod: PaymentMethod,
-    customerFirstName: string
+    customerFirstName: string,
+    paymentBreakdown?: PaymentBreakdown
   ): Observable<Order> {
     const request = {
       saleCode,
@@ -28,7 +29,8 @@ export class OrderService {
         price: item.price,
         quantity: item.quantity
       })),
-      paymentMethod
+      paymentMethod,
+      paymentBreakdown
     };
     return this.http.post<Order>(this.apiUrl, request).pipe(
       catchError(error => {

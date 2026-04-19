@@ -1,5 +1,5 @@
 import { createAction, props } from '@ngrx/store';
-import { Order, OrderItem, PaymentMethod } from '../../core/models';
+import { Order, OrderItem, PaymentBreakdown, PaymentMethod } from '../../core/models';
 
 export const addItem = createAction(
   '[Order] Add Item',
@@ -25,7 +25,7 @@ export const validateOrder = createAction('[Order] Validate Order');
 
 export const submitOrder = createAction(
   '[Order] Submit Order',
-  props<{ saleCode: string; customerFirstName: string; paymentMethod: PaymentMethod }>()
+  props<{ saleCode: string; customerFirstName: string; paymentMethod: PaymentMethod; paymentBreakdown?: PaymentBreakdown }>()
 );
 
 export const submitOrderSuccess = createAction(
