@@ -1,7 +1,6 @@
-import { Component, OnInit, inject } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, OnInit, inject, PLATFORM_ID } from '@angular/core';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Router } from '@angular/router';
 import { Store } from '@ngrx/store';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -12,12 +11,11 @@ import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule } from '@angular/material/core';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { Observable, of } from 'rxjs';
-import { map } from 'rxjs/operators';
-import { selectCurrentUser } from '../../store/auth/auth.selectors';
+import { MatIconModule } from '@angular/material/icon';
 import * as SalesActions from '../../store/sales/sales.actions';
 import { MOCK_DISHES, MOCK_DRINKS, MOCK_DESSERTS, MOCK_USERS } from '../../core/models';
 import { Sale, SaleItemWithSpecs } from '../../core/models';
+import { AuthService, CatalogCategory, CatalogService } from '../../core/services';
 
 @Component({
   selector: 'app-create-sale',
@@ -34,7 +32,8 @@ import { Sale, SaleItemWithSpecs } from '../../core/models';
     MatDatepickerModule,
     MatNativeDateModule,
     MatTabsModule,
-    MatProgressSpinnerModule
+    MatProgressSpinnerModule,
+    MatIconModule
   ],
   template: `
     <div class="create-sale-container">
@@ -61,11 +60,26 @@ import { Sale, SaleItemWithSpecs } from '../../core/models';
             <mat-form-field class="full-width">
               <mat-label>Vendeur/se</mat-label>
               <mat-select formControlName="sellerName">
-                <mat-option *ngFor="let user of users$ | async" [value]="user.firstName">
+                <mat-option *ngFor="let user of users" [value]="user.firstName">
                   {{ user.firstName }}
                 </mat-option>
               </mat-select>
             </mat-form-field>
+
+            <div class="add-inline-row">
+              <mat-form-field class="inline-field">
+                <mat-label>Nouvelle vendeuse</mat-label>
+                <input matInput [(ngModel)]="newSellerName" [ngModelOptions]="{standalone: true}" name="newSellerName" placeholder="Prénom" />
+              </mat-form-field>
+              <mat-form-field class="inline-field">
+                <mat-label>Téléphone</mat-label>
+                <input matInput [(ngModel)]="newSellerPhone" [ngModelOptions]="{standalone: true}" name="newSellerPhone" placeholder="07XXXXXXXX" />
+              </mat-form-field>
+              <button mat-stroked-button type="button" (click)="onAddSeller()">
+                <mat-icon>person_add</mat-icon>
+                Ajouter
+              </button>
+            </div>
 
             <!-- Plats Section -->
             <div class="section-title">Plats</div>
@@ -73,7 +87,7 @@ import { Sale, SaleItemWithSpecs } from '../../core/models';
               <mat-form-field class="full-width">
                 <mat-label>Plat {{ i + 1 }}</mat-label>
                 <mat-select [formControlName]="'dish' + i">
-                  <mat-option *ngFor="let dish of dishes$ | async" [value]="dish.name">
+                  <mat-option *ngFor="let dish of dishes" [value]="dish.name">
                     {{ dish.name }}
                   </mat-option>
                 </mat-select>
@@ -90,13 +104,24 @@ import { Sale, SaleItemWithSpecs } from '../../core/models';
               </mat-form-field>
             </div>
 
+            <div class="add-inline-row">
+              <mat-form-field class="inline-field">
+                <mat-label>Nouveau plat</mat-label>
+                <input matInput [(ngModel)]="newDishName" [ngModelOptions]="{standalone: true}" name="newDishName" placeholder="Nom du plat" />
+              </mat-form-field>
+              <button mat-stroked-button type="button" (click)="onAddCatalogItem('dish', newDishName)">
+                <mat-icon>add</mat-icon>
+                Ajouter
+              </button>
+            </div>
+
             <!-- Boissons Section -->
             <div class="section-title">Boissons</div>
             <div *ngFor="let i of [0, 1, 2, 3, 4]" class="item-group">
               <mat-form-field class="full-width">
                 <mat-label>Boisson {{ i + 1 }}</mat-label>
                 <mat-select [formControlName]="'drink' + i">
-                  <mat-option *ngFor="let drink of drinks$ | async" [value]="drink.name">
+                  <mat-option *ngFor="let drink of drinks" [value]="drink.name">
                     {{ drink.name }}
                   </mat-option>
                 </mat-select>
@@ -113,13 +138,24 @@ import { Sale, SaleItemWithSpecs } from '../../core/models';
               </mat-form-field>
             </div>
 
+            <div class="add-inline-row">
+              <mat-form-field class="inline-field">
+                <mat-label>Nouvelle boisson</mat-label>
+                <input matInput [(ngModel)]="newDrinkName" [ngModelOptions]="{standalone: true}" name="newDrinkName" placeholder="Nom de la boisson" />
+              </mat-form-field>
+              <button mat-stroked-button type="button" (click)="onAddCatalogItem('drink', newDrinkName)">
+                <mat-icon>add</mat-icon>
+                Ajouter
+              </button>
+            </div>
+
             <!-- Desserts Section -->
             <div class="section-title">Desserts</div>
             <div *ngFor="let i of [0, 1, 2]" class="item-group">
               <mat-form-field class="full-width">
                 <mat-label>Dessert {{ i + 1 }}</mat-label>
                 <mat-select [formControlName]="'dessert' + i">
-                  <mat-option *ngFor="let dessert of desserts$ | async" [value]="dessert.name">
+                  <mat-option *ngFor="let dessert of desserts" [value]="dessert.name">
                     {{ dessert.name }}
                   </mat-option>
                 </mat-select>
@@ -134,6 +170,17 @@ import { Sale, SaleItemWithSpecs } from '../../core/models';
                 <mat-label>Quantité</mat-label>
                 <input matInput type="number" [formControlName]="'dessertQuantity' + i" min="0" />
               </mat-form-field>
+            </div>
+
+            <div class="add-inline-row">
+              <mat-form-field class="inline-field">
+                <mat-label>Nouveau dessert</mat-label>
+                <input matInput [(ngModel)]="newDessertName" [ngModelOptions]="{standalone: true}" name="newDessertName" placeholder="Nom du dessert" />
+              </mat-form-field>
+              <button mat-stroked-button type="button" (click)="onAddCatalogItem('dessert', newDessertName)">
+                <mat-icon>add</mat-icon>
+                Ajouter
+              </button>
             </div>
 
             <button
@@ -207,6 +254,19 @@ import { Sale, SaleItemWithSpecs } from '../../core/models';
       margin-left: 0;
     }
 
+    .add-inline-row {
+      display: flex;
+      gap: 0.8rem;
+      align-items: center;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .inline-field {
+      flex: 1;
+      min-width: 180px;
+    }
+
     @media (max-width: 900px) {
       .create-sale-container {
         padding: 0.7rem;
@@ -236,21 +296,94 @@ import { Sale, SaleItemWithSpecs } from '../../core/models';
   `]
 })
 export class CreateSaleComponent implements OnInit {
+  private readonly platformId = inject(PLATFORM_ID);
   private readonly fb = inject(FormBuilder);
   private readonly store = inject(Store);
+  private readonly authService = inject(AuthService);
+  private readonly catalogService = inject(CatalogService);
 
   saleForm!: FormGroup;
-  dishes$!: Observable<any[]>;
-  drinks$!: Observable<any[]>;
-  desserts$!: Observable<any[]>;
-  users$!: Observable<any[]>;
+  dishes: Array<{ name: string }> = [];
+  drinks: Array<{ name: string }> = [];
+  desserts: Array<{ name: string }> = [];
+  users: Array<{ firstName: string }> = [];
+
+  newSellerName = '';
+  newSellerPhone = '';
+  newDishName = '';
+  newDrinkName = '';
+  newDessertName = '';
 
   ngOnInit() {
     this.initializeForm();
-    this.dishes$ = of(MOCK_DISHES);
-    this.drinks$ = of(MOCK_DRINKS);
-    this.desserts$ = of(MOCK_DESSERTS);
-    this.users$ = of(MOCK_USERS);
+    if (isPlatformBrowser(this.platformId)) {
+      this.loadUsers();
+      this.loadCatalog();
+      return;
+    }
+
+    this.users = MOCK_USERS;
+    this.dishes = MOCK_DISHES.map((d) => ({ name: d.name }));
+    this.drinks = MOCK_DRINKS.map((d) => ({ name: d.name }));
+    this.desserts = MOCK_DESSERTS.map((d) => ({ name: d.name }));
+  }
+
+  private loadUsers() {
+    this.authService.getUsers().subscribe((users) => {
+      this.users = users;
+    });
+  }
+
+  private loadCatalog() {
+    this.catalogService.getItemsByCategory('dish').subscribe((items) => {
+      this.dishes = items.length > 0 ? items : MOCK_DISHES.map((d) => ({ name: d.name }));
+    });
+    this.catalogService.getItemsByCategory('drink').subscribe((items) => {
+      this.drinks = items.length > 0 ? items : MOCK_DRINKS.map((d) => ({ name: d.name }));
+    });
+    this.catalogService.getItemsByCategory('dessert').subscribe((items) => {
+      this.desserts = items.length > 0 ? items : MOCK_DESSERTS.map((d) => ({ name: d.name }));
+    });
+  }
+
+  onAddSeller() {
+    const firstName = this.newSellerName.trim();
+    const phoneNumber = this.newSellerPhone.trim();
+
+    if (!firstName || !phoneNumber) {
+      alert('Veuillez saisir le prénom et le téléphone de la vendeuse.');
+      return;
+    }
+
+    this.authService.createUser(firstName, phoneNumber).subscribe({
+      next: () => {
+        this.newSellerName = '';
+        this.newSellerPhone = '';
+        this.loadUsers();
+      },
+      error: () => {
+        alert('Impossible d\'ajouter cette vendeuse. Vérifiez les informations.');
+      }
+    });
+  }
+
+  onAddCatalogItem(category: CatalogCategory, itemName: string) {
+    const name = itemName.trim();
+    if (!name) {
+      return;
+    }
+
+    this.catalogService.createItem(name, category).subscribe({
+      next: () => {
+        if (category === 'dish') this.newDishName = '';
+        if (category === 'drink') this.newDrinkName = '';
+        if (category === 'dessert') this.newDessertName = '';
+        this.loadCatalog();
+      },
+      error: () => {
+        alert('Impossible d\'ajouter cet élément au catalogue.');
+      }
+    });
   }
 
   private initializeForm() {

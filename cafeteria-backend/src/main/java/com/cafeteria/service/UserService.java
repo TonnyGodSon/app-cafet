@@ -5,6 +5,7 @@ import com.cafeteria.entity.User;
 import com.cafeteria.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -29,6 +30,28 @@ public class UserService {
     public UserDTO getUserByName(String firstName) {
         User user = userRepository.findByFirstName(firstName).orElse(null);
         return user != null ? convertToDTO(user) : null;
+    }
+
+    public UserDTO createUser(String firstName, String phoneNumber) {
+        String normalizedFirstName = firstName == null ? "" : firstName.trim();
+        String normalizedPhoneNumber = phoneNumber == null ? "" : phoneNumber.trim();
+
+        if (normalizedFirstName.isEmpty() || normalizedPhoneNumber.isEmpty()) {
+            throw new RuntimeException("First name and phone number are required");
+        }
+
+        User existingByName = userRepository.findByFirstName(normalizedFirstName).orElse(null);
+        if (existingByName != null) {
+            return convertToDTO(existingByName);
+        }
+
+        User created = userRepository.save(User.builder()
+                .firstName(normalizedFirstName)
+                .phoneNumber(normalizedPhoneNumber)
+                .isActive(true)
+                .build());
+
+        return convertToDTO(created);
     }
 
     public void initializeDefaultUsers() {

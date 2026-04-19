@@ -1,5 +1,6 @@
 package com.cafeteria;
 
+import com.cafeteria.service.CatalogService;
 import com.cafeteria.service.UserService;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
@@ -14,10 +15,11 @@ public class CafeteriaApplication {
     }
 
     @Bean
-    CommandLineRunner init(UserService userService) {
+    CommandLineRunner init(UserService userService, CatalogService catalogService) {
         return args -> {
             // Initialize default users
             userService.initializeDefaultUsers();
+            catalogService.initializeDefaultCatalogItems();
             System.out.println("Default users initialized successfully!");
         };
     }

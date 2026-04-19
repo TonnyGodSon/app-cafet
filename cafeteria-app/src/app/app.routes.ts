@@ -5,6 +5,7 @@ import { JoinSaleComponent } from './features/join-sale/join-sale.component';
 import { CreateSaleComponent } from './features/create-sale/create-sale.component';
 import { SaleDisplayComponent } from './features/sale-display/sale-display.component';
 import { CloseSaleComponent } from './features/close-sale/close-sale.component';
+import { authGuard } from './core/guards/auth.guard';
 
 export const routes: Routes = [
   {
@@ -22,19 +23,23 @@ export const routes: Routes = [
   },
   {
     path: 'join-sale',
-    component: JoinSaleComponent
+    component: JoinSaleComponent,
+    canActivate: [authGuard]
   },
   {
     path: 'create-sale',
-    component: CreateSaleComponent
+    component: CreateSaleComponent,
+    canActivate: [authGuard]
   },
   {
     path: 'sale-display',
-    component: SaleDisplayComponent
+    component: SaleDisplayComponent,
+    canActivate: [authGuard]
   },
   {
     path: 'close-sale',
-    component: CloseSaleComponent
+    component: CloseSaleComponent,
+    canActivate: [authGuard]
   },
   {
     path: '**',

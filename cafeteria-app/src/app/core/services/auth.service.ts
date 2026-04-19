@@ -26,5 +26,12 @@ export class AuthService {
       catchError(() => of(MOCK_USERS))
     );
   }
+
+  createUser(firstName: string, phoneNumber: string): Observable<User> {
+    return this.http.post<User>(`${this.apiUrl}/users`, {
+      firstName,
+      phoneNumber
+    });
+  }
 }
 

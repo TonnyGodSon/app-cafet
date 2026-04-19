@@ -27,11 +27,7 @@ import { MatIconModule } from '@angular/material/icon';
         <div class="hero-actions">
           <button mat-flat-button color="primary" routerLink="/login">
             <mat-icon>login</mat-icon>
-            Commencer
-          </button>
-          <button mat-stroked-button routerLink="/create-sale">
-            <mat-icon>add_business</mat-icon>
-            Nouvelle Vente
+            Se connecter
           </button>
         </div>
 
