@@ -60,15 +60,15 @@ import { AuthService, CatalogCategory, CatalogService } from '../../core/service
               </div>
               <div class="stat-pill">
                 <mat-icon>restaurant</mat-icon>
-                <span>{{ dishes.length }} plats</span>
+                <span>{{ selectedDishesCount }} plats</span>
               </div>
               <div class="stat-pill">
                 <mat-icon>local_bar</mat-icon>
-                <span>{{ drinks.length }} boissons</span>
+                <span>{{ selectedDrinksCount }} boissons</span>
               </div>
               <div class="stat-pill">
                 <mat-icon>cake</mat-icon>
-                <span>{{ desserts.length }} desserts</span>
+                <span>{{ selectedDessertsCount }} desserts</span>
               </div>
             </div>
 
@@ -128,10 +128,15 @@ import { AuthService, CatalogCategory, CatalogService } from '../../core/service
                 <input matInput type="number" [formControlName]="'dishPrice' + i" step="0.01" min="0" />
               </mat-form-field>
 
-              <mat-form-field class="half-width">
-                <mat-label>Quantité</mat-label>
-                <input matInput type="number" [formControlName]="'dishQuantity' + i" min="0" />
-              </mat-form-field>
+              <div class="quantity-control-wrapper">
+                <button mat-icon-button type="button" (click)="decrementQuantity('dish', i)" class="qty-btn">
+                  <mat-icon>remove</mat-icon>
+                </button>
+                <input matInput type="number" [formControlName]="'dishQuantity' + i" min="0" readonly class="qty-input" />
+                <button mat-icon-button type="button" (click)="incrementQuantity('dish', i)" class="qty-btn">
+                  <mat-icon>add</mat-icon>
+                </button>
+              </div>
             </div>
 
             <div class="add-inline-row">
@@ -165,10 +170,15 @@ import { AuthService, CatalogCategory, CatalogService } from '../../core/service
                 <input matInput type="number" [formControlName]="'drinkPrice' + i" step="0.01" min="0" />
               </mat-form-field>
 
-              <mat-form-field class="half-width">
-                <mat-label>Quantité</mat-label>
-                <input matInput type="number" [formControlName]="'drinkQuantity' + i" min="0" />
-              </mat-form-field>
+              <div class="quantity-control-wrapper">
+                <button mat-icon-button type="button" (click)="decrementQuantity('drink', i)" class="qty-btn">
+                  <mat-icon>remove</mat-icon>
+                </button>
+                <input matInput type="number" [formControlName]="'drinkQuantity' + i" min="0" readonly class="qty-input" />
+                <button mat-icon-button type="button" (click)="incrementQuantity('drink', i)" class="qty-btn">
+                  <mat-icon>add</mat-icon>
+                </button>
+              </div>
             </div>
 
             <div class="add-inline-row">
@@ -202,10 +212,15 @@ import { AuthService, CatalogCategory, CatalogService } from '../../core/service
                 <input matInput type="number" [formControlName]="'dessertPrice' + i" step="0.01" min="0" />
               </mat-form-field>
 
-              <mat-form-field class="half-width">
-                <mat-label>Quantité</mat-label>
-                <input matInput type="number" [formControlName]="'dessertQuantity' + i" min="0" />
-              </mat-form-field>
+              <div class="quantity-control-wrapper">
+                <button mat-icon-button type="button" (click)="decrementQuantity('dessert', i)" class="qty-btn">
+                  <mat-icon>remove</mat-icon>
+                </button>
+                <input matInput type="number" [formControlName]="'dessertQuantity' + i" min="0" readonly class="qty-input" />
+                <button mat-icon-button type="button" (click)="incrementQuantity('dessert', i)" class="qty-btn">
+                  <mat-icon>add</mat-icon>
+                </button>
+              </div>
             </div>
 
             <div class="add-inline-row">
@@ -393,6 +408,34 @@ import { AuthService, CatalogCategory, CatalogService } from '../../core/service
       gap: 0.35rem;
     }
 
+    .quantity-control-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      grid-column: 1 / -1;
+    }
+
+    .qty-btn {
+      min-width: 36px;
+      min-height: 36px;
+      color: #dd6c20;
+    }
+
+    .qty-btn mat-icon {
+      font-size: 1rem;
+      width: 1rem;
+      height: 1rem;
+    }
+
+    .qty-input {
+      flex: 1;
+      text-align: center;
+      font-weight: 600;
+      color: #2d3550;
+      background-color: #f9f9fb;
+      border-radius: 6px;
+    }
+
     @media (max-width: 900px) {
       .create-sale-container {
         padding: 0.7rem;
@@ -439,6 +482,30 @@ export class CreateSaleComponent implements OnInit {
   newDishName = '';
   newDrinkName = '';
   newDessertName = '';
+
+  get selectedDishesCount(): number {
+    let count = 0;
+    for (let i = 0; i < 3; i++) {
+      if (this.saleForm.get('dish' + i)?.value) count++;
+    }
+    return count;
+  }
+
+  get selectedDrinksCount(): number {
+    let count = 0;
+    for (let i = 0; i < 5; i++) {
+      if (this.saleForm.get('drink' + i)?.value) count++;
+    }
+    return count;
+  }
+
+  get selectedDessertsCount(): number {
+    let count = 0;
+    for (let i = 0; i < 3; i++) {
+      if (this.saleForm.get('dessert' + i)?.value) count++;
+    }
+    return count;
+  }
 
   ngOnInit() {
     this.initializeForm();
@@ -608,5 +675,19 @@ export class CreateSaleComponent implements OnInit {
     }
 
     return items;
+  }
+
+  incrementQuantity(category: string, index: number): void {
+    const controlName = category + 'Quantity' + index;
+    const currentValue = parseInt(this.saleForm.get(controlName)?.value || '0', 10);
+    this.saleForm.get(controlName)?.setValue(currentValue + 1);
+  }
+
+  decrementQuantity(category: string, index: number): void {
+    const controlName = category + 'Quantity' + index;
+    const currentValue = parseInt(this.saleForm.get(controlName)?.value || '0', 10);
+    if (currentValue > 0) {
+      this.saleForm.get(controlName)?.setValue(currentValue - 1);
+    }
   }
 }
