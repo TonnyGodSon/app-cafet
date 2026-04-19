@@ -1,5 +1,5 @@
-import { Component, OnInit, inject } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, OnInit, inject, PLATFORM_ID } from '@angular/core';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Store } from '@ngrx/store';
@@ -49,7 +49,7 @@ interface PaymentEntry {
     MatSnackBarModule
   ],
   template: `
-    <div class="sale-display-container">
+    <div class="sale-display-container" [class.cashier-mode]="isCashierMode">
       <div class="header">
         <div class="brand-wrap">
           <img class="brand-logo" src="assets/brand/logo-food.svg" alt="Logo CaFaith Normandie" />
@@ -59,6 +59,10 @@ interface PaymentEntry {
           </div>
         </div>
         <div class="header-info">
+          <button mat-stroked-button class="cashier-mode-btn" (click)="toggleCashierMode()">
+            <mat-icon>{{ isCashierMode ? 'fullscreen_exit' : 'fullscreen' }}</mat-icon>
+            {{ isCashierMode ? 'Quitter Mode Caisse' : 'Mode Caisse' }}
+          </button>
           <span>{{ getCurrentDate() }}</span>
           <button mat-raised-button color="warn" (click)="onCloseSale()">
             <mat-icon>event_busy</mat-icon>
@@ -324,6 +328,13 @@ interface PaymentEntry {
       gap: 2rem;
       align-items: center;
       flex-wrap: wrap;
+    }
+
+    .cashier-mode-btn {
+      border-color: #7f93c9 !important;
+      color: #3f4d79;
+      font-weight: 700;
+      background: #f5f8ff;
     }
 
     .content {
@@ -655,6 +666,58 @@ interface PaymentEntry {
       box-shadow: 0 10px 20px rgba(60, 92, 154, 0.25);
     }
 
+    .sale-display-container.cashier-mode {
+      padding: 0.7rem;
+      background: radial-gradient(circle at top left, #fff3dc, #eaf3ff 58%, #eef5ff);
+    }
+
+    .sale-display-container.cashier-mode .header {
+      padding: 0.8rem 1rem;
+      border-radius: 14px;
+    }
+
+    .sale-display-container.cashier-mode .content {
+      gap: 1rem;
+      grid-template-columns: 1fr 380px;
+    }
+
+    .sale-display-container.cashier-mode .products-grid {
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0.7rem;
+      padding: 0.7rem 0;
+    }
+
+    .sale-display-container.cashier-mode .product-card {
+      padding: 0.7rem;
+      border-radius: 12px;
+    }
+
+    .sale-display-container.cashier-mode .product-image {
+      width: 66px;
+      height: 66px;
+      margin-bottom: 0.45rem;
+    }
+
+    .sale-display-container.cashier-mode .product-name {
+      font-size: 0.9rem;
+      min-height: 2.1rem;
+    }
+
+    .sale-display-container.cashier-mode .qty-minus,
+    .sale-display-container.cashier-mode .qty-plus {
+      width: 36px;
+      height: 36px;
+    }
+
+    .sale-display-container.cashier-mode .qty-value {
+      font-size: 1.05rem;
+      min-width: 32px;
+    }
+
+    .sale-display-container.cashier-mode .cart-items {
+      max-height: 360px;
+    }
+
     @keyframes cardIn {
       from {
         opacity: 0;
@@ -716,6 +779,7 @@ export class SaleDisplayComponent implements OnInit {
   private readonly store = inject(Store);
   private readonly router = inject(Router);
   private readonly snackBar = inject(MatSnackBar);
+  private readonly platformId = inject(PLATFORM_ID);
 
   dishes: MenuDisplayItem[] = [];
   drinks: MenuDisplayItem[] = [];
@@ -724,6 +788,7 @@ export class SaleDisplayComponent implements OnInit {
   selectedTabIndex = 0;
   customerFirstName = '';
   productSearch = '';
+  isCashierMode = false;
   orderTotalValue = 0;
   orderItemCount = 0;
   orderItems: OrderItem[] = [];
@@ -765,6 +830,25 @@ export class SaleDisplayComponent implements OnInit {
 
   selectProduct(product: MenuDisplayItem) {
     this.incrementProduct(product);
+  }
+
+  async toggleCashierMode(): Promise<void> {
+    this.isCashierMode = !this.isCashierMode;
+
+    if (!isPlatformBrowser(this.platformId) || typeof document === 'undefined') {
+      return;
+    }
+
+    try {
+      if (this.isCashierMode && !document.fullscreenElement) {
+        await document.documentElement.requestFullscreen();
+      }
+      if (!this.isCashierMode && document.fullscreenElement) {
+        await document.exitFullscreen();
+      }
+    } catch {
+      // Fallback: keep visual cashier mode even if fullscreen API is blocked.
+    }
   }
 
   clearSearch(): void {
