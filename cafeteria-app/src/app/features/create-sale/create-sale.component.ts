@@ -81,12 +81,12 @@ import { Sale, SaleItemWithSpecs } from '../../core/models';
 
               <mat-form-field class="half-width">
                 <mat-label>Tarif €</mat-label>
-                <input matInput type="number" [formControlName]="'dishPrice' + i" step="0.01" />
+                <input matInput type="number" [formControlName]="'dishPrice' + i" step="0.01" min="0" />
               </mat-form-field>
 
               <mat-form-field class="half-width">
                 <mat-label>Quantité</mat-label>
-                <input matInput type="number" [formControlName]="'dishQuantity' + i" />
+                <input matInput type="number" [formControlName]="'dishQuantity' + i" min="0" />
               </mat-form-field>
             </div>
 
@@ -104,12 +104,12 @@ import { Sale, SaleItemWithSpecs } from '../../core/models';
 
               <mat-form-field class="half-width">
                 <mat-label>Tarif €</mat-label>
-                <input matInput type="number" [formControlName]="'drinkPrice' + i" step="0.01" />
+                <input matInput type="number" [formControlName]="'drinkPrice' + i" step="0.01" min="0" />
               </mat-form-field>
 
               <mat-form-field class="half-width">
                 <mat-label>Quantité</mat-label>
-                <input matInput type="number" [formControlName]="'drinkQuantity' + i" />
+                <input matInput type="number" [formControlName]="'drinkQuantity' + i" min="0" />
               </mat-form-field>
             </div>
 
@@ -127,12 +127,12 @@ import { Sale, SaleItemWithSpecs } from '../../core/models';
 
               <mat-form-field class="half-width">
                 <mat-label>Tarif €</mat-label>
-                <input matInput type="number" [formControlName]="'dessertPrice' + i" step="0.01" />
+                <input matInput type="number" [formControlName]="'dessertPrice' + i" step="0.01" min="0" />
               </mat-form-field>
 
               <mat-form-field class="half-width">
                 <mat-label>Quantité</mat-label>
-                <input matInput type="number" [formControlName]="'dessertQuantity' + i" />
+                <input matInput type="number" [formControlName]="'dessertQuantity' + i" min="0" />
               </mat-form-field>
             </div>
 

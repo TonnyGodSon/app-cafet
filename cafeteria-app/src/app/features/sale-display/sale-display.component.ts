@@ -70,7 +70,7 @@ interface PaymentEntry {
       <div class="content">
         <!-- Products Selection (Left) -->
         <div class="products-section">
-          <mat-tab-group>
+          <mat-tab-group [selectedIndex]="selectedTabIndex" (selectedIndexChange)="selectedTabIndex = $event">
             <!-- Plats Tab -->
             <mat-tab label="Plats">
               <div class="products-grid">
@@ -545,6 +545,7 @@ export class SaleDisplayComponent implements OnInit {
   drinks: MenuDisplayItem[] = [];
   desserts: MenuDisplayItem[] = [];
   paymentMethods: PaymentOption[] = ['CB', 'PayPal', 'Wero', 'Espèces'];
+  selectedTabIndex = 0;
   customerFirstName = '';
   orderTotalValue = 0;
   orderItemCount = 0;
@@ -738,6 +739,7 @@ export class SaleDisplayComponent implements OnInit {
     this.paymentMethods.forEach((method) => {
       this.paymentState[method] = { selected: false, amount: 0 };
     });
+    this.selectedTabIndex = 0;
   }
 
   onCloseSale() {

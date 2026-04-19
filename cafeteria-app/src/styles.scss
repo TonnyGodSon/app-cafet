@@ -44,6 +44,28 @@ body {
 	color: #66708e;
 }
 
+/* Global button styles */
+.mat-mdc-raised-button:not([disabled]) {
+  border: 2px solid transparent !important;
+  box-shadow: 0 2px 6px rgba(45, 53, 80, 0.15) !important;
+}
+
+.mat-mdc-raised-button[color="primary"]:not([disabled]) {
+  border-color: var(--cafe-primary) !important;
+}
+
+.mat-mdc-raised-button[color="accent"]:not([disabled]) {
+  border-color: var(--cafe-accent) !important;
+}
+
+.mat-mdc-raised-button[color="warn"]:not([disabled]) {
+  border-color: #c62828 !important;
+}
+
+.mat-mdc-raised-button:not([color]):not([disabled]) {
+  border-color: var(--cafe-secondary) !important;
+}
+
 /* Material overlay/readability fixes */
 .cdk-overlay-pane .mat-mdc-select-panel {
 	background: #ffffff !important;

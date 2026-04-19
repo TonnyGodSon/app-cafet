@@ -1,5 +1,5 @@
-import { Component, OnInit, inject } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, OnInit, inject, PLATFORM_ID } from '@angular/core';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Store } from '@ngrx/store';
@@ -119,6 +119,7 @@ import { selectIsSaleActive } from '../../store/sales/sales.selectors';
 export class LoginComponent implements OnInit {
   private readonly store = inject(Store);
   private readonly router = inject(Router);
+  private readonly platformId = inject(PLATFORM_ID);
 
   firstName = '';
   phoneNumber = '';
@@ -130,7 +131,9 @@ export class LoginComponent implements OnInit {
     this.isLoading$ = this.store.select(selectAuthLoading);
     this.error$ = this.store.select(selectAuthError);
     this.isSaleActive$ = this.store.select(selectIsSaleActive);
-    this.store.dispatch(AuthActions.loadUsers());
+    if (isPlatformBrowser(this.platformId)) {
+      this.store.dispatch(AuthActions.loadUsers());
+    }
   }
 
   onLogin() {

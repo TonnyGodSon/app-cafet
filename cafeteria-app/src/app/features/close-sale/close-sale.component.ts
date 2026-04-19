@@ -1,5 +1,5 @@
-import { Component, OnInit, inject } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, OnInit, inject, PLATFORM_ID } from '@angular/core';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { Store } from '@ngrx/store';
 import { MatCardModule } from '@angular/material/card';
@@ -156,6 +156,7 @@ export class CloseSaleComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly saleService = inject(SaleService);
   private readonly orderService = inject(OrderService);
+  private readonly platformId = inject(PLATFORM_ID);
 
   saleCode$!: Observable<string | null>;
   activeSale$!: Observable<Sale | null>;
@@ -400,30 +401,21 @@ export class CloseSaleComponent implements OnInit {
   }
 
   onSendEmail() {
-    this.isLoading = true;
-    this.successMessage = '';
-    this.errorMessage = '';
+    if (!isPlatformBrowser(this.platformId)) return;
 
-    this.saleCode$.subscribe(saleCode => {
-      if (saleCode) {
-        try {
-          // Mock email sending
-          this.saleService.sendMailWithPDF('antoine.mvoumby@gmail.com', '').subscribe(
-            () => {
-              this.successMessage = 'Email envoyé avec succès à antoine.mvoumby@gmail.com!';
-              this.isLoading = false;
-            },
-            () => {
-              this.errorMessage = 'Erreur lors de l\'envoi de l\'email';
-              this.isLoading = false;
-            }
-          );
-        } catch (error) {
-          this.errorMessage = 'Erreur lors de l\'envoi de l\'email';
-          this.isLoading = false;
-        }
-      }
+    const today = new Date();
+    const dateFormatted = today.toLocaleDateString('fr-FR', {
+      weekday: 'long', year: 'numeric', month: '2-digit', day: '2-digit'
     });
+    const dateFr = today.toLocaleDateString('fr-FR');
+
+    const subject = encodeURIComponent(`Rapport de vente de la cafétéria datant du ${dateFr}`);
+    const body = encodeURIComponent(
+      `Bonjour,\n\nVeuillez trouver ci-joint le rapport de votre vente datant du ${dateFormatted}.\n\nCordialement,\nCaFaith Normandie`
+    );
+
+    window.open(`mailto:?subject=${subject}&body=${body}`, '_blank');
+    this.successMessage = 'Client mail ouvert avec succès.';
   }
 
   onLogout() {
