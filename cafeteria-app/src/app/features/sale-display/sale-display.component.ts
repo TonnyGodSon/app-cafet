@@ -77,11 +77,19 @@ interface PaymentEntry {
                 <div
                   *ngFor="let dish of dishes"
                   class="product-card"
-                  (click)="selectProduct(dish)"
                 >
-                  <img class="product-image" [src]="dish.image" [alt]="dish.name" />
-                  <div class="product-name">{{ dish.name }}</div>
-                  <div class="product-price">{{ dish.price.toFixed(2) }} €</div>
+                  <img class="product-image" [src]="dish.image" [alt]="dish.name" (click)="incrementProduct(dish)" />
+                  <div class="product-name" (click)="incrementProduct(dish)">{{ dish.name }}</div>
+                  <div class="product-price" (click)="incrementProduct(dish)">{{ dish.price.toFixed(2) }} €</div>
+                  <div class="product-qty-controls" (click)="$event.stopPropagation()">
+                    <button mat-icon-button class="qty-minus" (click)="decrementProduct(dish)" [disabled]="getProductQuantity(dish.name) === 0">
+                      <mat-icon>remove</mat-icon>
+                    </button>
+                    <span class="qty-value" [class.active]="getProductQuantity(dish.name) > 0">{{ getProductQuantity(dish.name) }}</span>
+                    <button mat-icon-button class="qty-plus" (click)="incrementProduct(dish)">
+                      <mat-icon>add</mat-icon>
+                    </button>
+                  </div>
                 </div>
               </div>
             </mat-tab>
@@ -92,11 +100,19 @@ interface PaymentEntry {
                 <div
                   *ngFor="let drink of drinks"
                   class="product-card"
-                  (click)="selectProduct(drink)"
                 >
-                  <img class="product-image" [src]="drink.image" [alt]="drink.name" />
-                  <div class="product-name">{{ drink.name }}</div>
-                  <div class="product-price">{{ drink.price.toFixed(2) }} €</div>
+                  <img class="product-image" [src]="drink.image" [alt]="drink.name" (click)="incrementProduct(drink)" />
+                  <div class="product-name" (click)="incrementProduct(drink)">{{ drink.name }}</div>
+                  <div class="product-price" (click)="incrementProduct(drink)">{{ drink.price.toFixed(2) }} €</div>
+                  <div class="product-qty-controls" (click)="$event.stopPropagation()">
+                    <button mat-icon-button class="qty-minus" (click)="decrementProduct(drink)" [disabled]="getProductQuantity(drink.name) === 0">
+                      <mat-icon>remove</mat-icon>
+                    </button>
+                    <span class="qty-value" [class.active]="getProductQuantity(drink.name) > 0">{{ getProductQuantity(drink.name) }}</span>
+                    <button mat-icon-button class="qty-plus" (click)="incrementProduct(drink)">
+                      <mat-icon>add</mat-icon>
+                    </button>
+                  </div>
                 </div>
               </div>
             </mat-tab>
@@ -107,11 +123,19 @@ interface PaymentEntry {
                 <div
                   *ngFor="let dessert of desserts"
                   class="product-card"
-                  (click)="selectProduct(dessert)"
                 >
-                  <img class="product-image" [src]="dessert.image" [alt]="dessert.name" />
-                  <div class="product-name">{{ dessert.name }}</div>
-                  <div class="product-price">{{ dessert.price.toFixed(2) }} €</div>
+                  <img class="product-image" [src]="dessert.image" [alt]="dessert.name" (click)="incrementProduct(dessert)" />
+                  <div class="product-name" (click)="incrementProduct(dessert)">{{ dessert.name }}</div>
+                  <div class="product-price" (click)="incrementProduct(dessert)">{{ dessert.price.toFixed(2) }} €</div>
+                  <div class="product-qty-controls" (click)="$event.stopPropagation()">
+                    <button mat-icon-button class="qty-minus" (click)="decrementProduct(dessert)" [disabled]="getProductQuantity(dessert.name) === 0">
+                      <mat-icon>remove</mat-icon>
+                    </button>
+                    <span class="qty-value" [class.active]="getProductQuantity(dessert.name) > 0">{{ getProductQuantity(dessert.name) }}</span>
+                    <button mat-icon-button class="qty-plus" (click)="incrementProduct(dessert)">
+                      <mat-icon>add</mat-icon>
+                    </button>
+                  </div>
                 </div>
               </div>
             </mat-tab>
@@ -352,6 +376,54 @@ interface PaymentEntry {
       color: #dd6c20;
       font-weight: 700;
       margin-top: 0.5rem;
+      cursor: pointer;
+    }
+
+    .product-qty-controls {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.2rem;
+      margin-top: 0.6rem;
+      border-top: 1px solid #f0e8da;
+      padding-top: 0.5rem;
+    }
+
+    .qty-minus, .qty-plus {
+      width: 30px;
+      height: 30px;
+      line-height: 30px;
+    }
+
+    .qty-minus mat-icon, .qty-plus mat-icon {
+      font-size: 1rem;
+      width: 1rem;
+      height: 1rem;
+      line-height: 1rem;
+    }
+
+    .qty-minus {
+      color: #9aa3be;
+    }
+
+    .qty-minus:not([disabled]) {
+      color: #c94b43;
+    }
+
+    .qty-plus {
+      color: #2b8a4a;
+    }
+
+    .qty-value {
+      font-weight: 700;
+      font-size: 1rem;
+      min-width: 28px;
+      text-align: center;
+      color: #aab0c6;
+    }
+
+    .qty-value.active {
+      color: #2d3550;
     }
 
     .order-section {
@@ -549,6 +621,7 @@ export class SaleDisplayComponent implements OnInit {
   customerFirstName = '';
   orderTotalValue = 0;
   orderItemCount = 0;
+  orderItems: OrderItem[] = [];
   paymentState: Record<PaymentOption, PaymentEntry> = {
     CB: { selected: false, amount: 0 },
     PayPal: { selected: false, amount: 0 },
@@ -573,6 +646,7 @@ export class SaleDisplayComponent implements OnInit {
     this.saleCode$ = this.store.select(selectActiveSaleCode);
     this.items$.subscribe((items) => {
       this.orderItemCount = items.length;
+      this.orderItems = items;
     });
     this.total$.subscribe((value) => {
       this.orderTotalValue = value;
@@ -585,14 +659,37 @@ export class SaleDisplayComponent implements OnInit {
   }
 
   selectProduct(product: MenuDisplayItem) {
-    const item: OrderItem = {
-      productId: product.name + Date.now(),
-      productName: product.name,
-      price: product.price,
-      quantity: 1,
-      category: product.category
-    };
-    this.store.dispatch(OrdersActions.addItem({ item }));
+    this.incrementProduct(product);
+  }
+
+  getProductQuantity(productName: string): number {
+    return this.orderItems.find(i => i.productId === productName)?.quantity ?? 0;
+  }
+
+  incrementProduct(product: MenuDisplayItem): void {
+    const existing = this.orderItems.find(i => i.productId === product.name);
+    if (existing) {
+      this.store.dispatch(OrdersActions.updateItemQuantity({ productId: product.name, quantity: existing.quantity + 1 }));
+    } else {
+      const item: OrderItem = {
+        productId: product.name,
+        productName: product.name,
+        price: product.price,
+        quantity: 1,
+        category: product.category
+      };
+      this.store.dispatch(OrdersActions.addItem({ item }));
+    }
+  }
+
+  decrementProduct(product: MenuDisplayItem): void {
+    const existing = this.orderItems.find(i => i.productId === product.name);
+    if (!existing) return;
+    if (existing.quantity > 1) {
+      this.store.dispatch(OrdersActions.updateItemQuantity({ productId: product.name, quantity: existing.quantity - 1 }));
+    } else {
+      this.store.dispatch(OrdersActions.removeItem({ productId: product.name }));
+    }
   }
 
   private toDisplayItems(
