@@ -49,7 +49,34 @@ import { AuthService, CatalogCategory, CatalogService } from '../../core/service
         </mat-card-header>
         <mat-card-content>
           <form [formGroup]="saleForm" (ngSubmit)="onCreateSale()">
-            <!-- Basic Info Section -->
+            <div class="form-intro">
+              Configure rapidement la vente du jour, puis personnalise le catalogue et l'équipe en direct.
+            </div>
+
+            <div class="stats-strip">
+              <div class="stat-pill">
+                <mat-icon>groups</mat-icon>
+                <span>{{ users.length }} vendeuses</span>
+              </div>
+              <div class="stat-pill">
+                <mat-icon>restaurant</mat-icon>
+                <span>{{ dishes.length }} plats</span>
+              </div>
+              <div class="stat-pill">
+                <mat-icon>local_bar</mat-icon>
+                <span>{{ drinks.length }} boissons</span>
+              </div>
+              <div class="stat-pill">
+                <mat-icon>cake</mat-icon>
+                <span>{{ desserts.length }} desserts</span>
+              </div>
+            </div>
+
+            <div class="section-title">
+              <mat-icon>badge</mat-icon>
+              <span>Informations de vente</span>
+            </div>
+
             <mat-form-field class="full-width">
               <mat-label>Date</mat-label>
               <input matInput [matDatepicker]="picker" formControlName="date" />
@@ -82,7 +109,10 @@ import { AuthService, CatalogCategory, CatalogService } from '../../core/service
             </div>
 
             <!-- Plats Section -->
-            <div class="section-title">Plats</div>
+            <div class="section-title">
+              <mat-icon>restaurant_menu</mat-icon>
+              <span>Plats</span>
+            </div>
             <div *ngFor="let i of [0, 1, 2]" class="item-group">
               <mat-form-field class="full-width">
                 <mat-label>Plat {{ i + 1 }}</mat-label>
@@ -109,14 +139,17 @@ import { AuthService, CatalogCategory, CatalogService } from '../../core/service
                 <mat-label>Nouveau plat</mat-label>
                 <input matInput [(ngModel)]="newDishName" [ngModelOptions]="{standalone: true}" name="newDishName" placeholder="Nom du plat" />
               </mat-form-field>
-              <button mat-stroked-button type="button" (click)="onAddCatalogItem('dish', newDishName)">
+              <button class="add-action-btn" mat-stroked-button type="button" (click)="onAddCatalogItem('dish', newDishName)">
                 <mat-icon>add</mat-icon>
                 Ajouter
               </button>
             </div>
 
             <!-- Boissons Section -->
-            <div class="section-title">Boissons</div>
+            <div class="section-title">
+              <mat-icon>local_bar</mat-icon>
+              <span>Boissons</span>
+            </div>
             <div *ngFor="let i of [0, 1, 2, 3, 4]" class="item-group">
               <mat-form-field class="full-width">
                 <mat-label>Boisson {{ i + 1 }}</mat-label>
@@ -143,14 +176,17 @@ import { AuthService, CatalogCategory, CatalogService } from '../../core/service
                 <mat-label>Nouvelle boisson</mat-label>
                 <input matInput [(ngModel)]="newDrinkName" [ngModelOptions]="{standalone: true}" name="newDrinkName" placeholder="Nom de la boisson" />
               </mat-form-field>
-              <button mat-stroked-button type="button" (click)="onAddCatalogItem('drink', newDrinkName)">
+              <button class="add-action-btn" mat-stroked-button type="button" (click)="onAddCatalogItem('drink', newDrinkName)">
                 <mat-icon>add</mat-icon>
                 Ajouter
               </button>
             </div>
 
             <!-- Desserts Section -->
-            <div class="section-title">Desserts</div>
+            <div class="section-title">
+              <mat-icon>cake</mat-icon>
+              <span>Desserts</span>
+            </div>
             <div *ngFor="let i of [0, 1, 2]" class="item-group">
               <mat-form-field class="full-width">
                 <mat-label>Dessert {{ i + 1 }}</mat-label>
@@ -177,21 +213,29 @@ import { AuthService, CatalogCategory, CatalogService } from '../../core/service
                 <mat-label>Nouveau dessert</mat-label>
                 <input matInput [(ngModel)]="newDessertName" [ngModelOptions]="{standalone: true}" name="newDessertName" placeholder="Nom du dessert" />
               </mat-form-field>
-              <button mat-stroked-button type="button" (click)="onAddCatalogItem('dessert', newDessertName)">
+              <button class="add-action-btn" mat-stroked-button type="button" (click)="onAddCatalogItem('dessert', newDessertName)">
                 <mat-icon>add</mat-icon>
                 Ajouter
               </button>
             </div>
 
-            <button
-              mat-raised-button
-              color="primary"
-              type="submit"
-              class="full-width"
-              [disabled]="!saleForm.get('date')?.value || !saleForm.get('sellerName')?.value"
-            >
-              Créer la Vente
-            </button>
+            <div class="actions-row">
+              <button mat-stroked-button type="button" class="secondary-btn" (click)="onResetProducts()">
+                <mat-icon>restart_alt</mat-icon>
+                Réinitialiser produits
+              </button>
+
+              <button
+                mat-raised-button
+                color="primary"
+                type="submit"
+                class="primary-btn"
+                [disabled]="!saleForm.get('date')?.value || !saleForm.get('sellerName')?.value"
+              >
+                <mat-icon>add_business</mat-icon>
+                Créer la Vente
+              </button>
+            </div>
           </form>
         </mat-card-content>
       </mat-card>
@@ -217,6 +261,45 @@ import { AuthService, CatalogCategory, CatalogService } from '../../core/service
       width: 100%;
       margin-bottom: 1rem;
     }
+
+    .form-intro {
+      background: linear-gradient(135deg, #fff9ef, #eef6ff);
+      border: 1px solid #e8e9f7;
+      border-radius: 12px;
+      padding: 0.7rem 0.9rem;
+      margin-bottom: 0.9rem;
+      color: #455177;
+      font-size: 0.93rem;
+      line-height: 1.35;
+    }
+
+    .stats-strip {
+      display: flex;
+      gap: 0.55rem;
+      flex-wrap: wrap;
+      margin-bottom: 1rem;
+    }
+
+    .stat-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      border: 1px solid #dbe2f4;
+      background: #fff;
+      border-radius: 999px;
+      padding: 0.3rem 0.65rem;
+      color: #3c4a71;
+      font-size: 0.82rem;
+      font-weight: 600;
+    }
+
+    .stat-pill mat-icon {
+      color: #dd6c20;
+      font-size: 1rem;
+      width: 1rem;
+      height: 1rem;
+    }
+
     .half-width {
       width: calc(50% - 0.5rem);
       margin-bottom: 1rem;
@@ -225,6 +308,9 @@ import { AuthService, CatalogCategory, CatalogService } from '../../core/service
       margin-left: 1rem;
     }
     .section-title {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
       font-weight: 700;
       font-size: 1.1rem;
       margin-top: 1.5rem;
@@ -233,11 +319,23 @@ import { AuthService, CatalogCategory, CatalogService } from '../../core/service
       border-left: 4px solid #f3c375;
       padding-left: 0.6rem;
     }
+
+    .section-title mat-icon {
+      color: #dd6c20;
+      font-size: 1.1rem;
+      width: 1.1rem;
+      height: 1.1rem;
+    }
+
     .item-group {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 0.8rem;
       margin-bottom: 1rem;
+      border: 1px solid #ebedf7;
+      border-radius: 12px;
+      padding: 0.75rem;
+      background: #ffffffc9;
     }
 
     .item-group .full-width {
@@ -265,6 +363,34 @@ import { AuthService, CatalogCategory, CatalogService } from '../../core/service
     .inline-field {
       flex: 1;
       min-width: 180px;
+    }
+
+    .add-action-btn {
+      min-width: 130px;
+      border-color: #dd6c20 !important;
+    }
+
+    .actions-row {
+      margin-top: 1.25rem;
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      border-top: 1px dashed #d4dcee;
+      padding-top: 1rem;
+    }
+
+    .secondary-btn {
+      border-color: #8ea0cc !important;
+      color: #4d5b82;
+    }
+
+    .primary-btn {
+      min-width: 220px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.35rem;
     }
 
     @media (max-width: 900px) {
@@ -384,6 +510,20 @@ export class CreateSaleComponent implements OnInit {
         alert('Impossible d\'ajouter cet élément au catalogue.');
       }
     });
+  }
+
+  onResetProducts() {
+    const resetCategoryControls = (category: 'dish' | 'drink' | 'dessert', count: number) => {
+      for (let i = 0; i < count; i++) {
+        this.saleForm.get(category + i)?.setValue('');
+        this.saleForm.get(category + 'Price' + i)?.setValue('');
+        this.saleForm.get(category + 'Quantity' + i)?.setValue('');
+      }
+    };
+
+    resetCategoryControls('dish', 3);
+    resetCategoryControls('drink', 5);
+    resetCategoryControls('dessert', 3);
   }
 
   private initializeForm() {
