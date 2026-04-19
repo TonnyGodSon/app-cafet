@@ -70,12 +70,35 @@ interface PaymentEntry {
       <div class="content">
         <!-- Products Selection (Left) -->
         <div class="products-section">
+          <div class="express-toolbar">
+            <mat-form-field class="search-field" appearance="outline">
+              <mat-label>Recherche rapide</mat-label>
+              <input matInput [(ngModel)]="productSearch" name="productSearch" placeholder="Ex: Poulet, Coca, Gateau..." />
+              <mat-icon matSuffix>search</mat-icon>
+            </mat-form-field>
+
+            <div class="live-stats">
+              <span class="stat-chip"><mat-icon>restaurant_menu</mat-icon>{{ selectedDishUnits }} plats</span>
+              <span class="stat-chip"><mat-icon>local_bar</mat-icon>{{ selectedDrinkUnits }} boissons</span>
+              <span class="stat-chip"><mat-icon>cake</mat-icon>{{ selectedDessertUnits }} desserts</span>
+              <span class="stat-chip total"><mat-icon>shopping_bag</mat-icon>{{ totalSelectedUnits }} articles</span>
+            </div>
+
+            <button mat-stroked-button type="button" class="clear-search-btn" (click)="clearSearch()" [disabled]="!productSearch.trim()">
+              <mat-icon>backspace</mat-icon>
+              Effacer
+            </button>
+          </div>
+
           <mat-tab-group [selectedIndex]="selectedTabIndex" (selectedIndexChange)="selectedTabIndex = $event">
             <!-- Plats Tab -->
             <mat-tab label="Plats">
-              <div class="products-grid">
+              <div *ngIf="filteredDishes.length === 0" class="empty-state">
+                Aucun plat ne correspond à la recherche.
+              </div>
+              <div class="products-grid" *ngIf="filteredDishes.length > 0">
                 <div
-                  *ngFor="let dish of dishes"
+                  *ngFor="let dish of filteredDishes"
                   class="product-card"
                 >
                   <img class="product-image" [src]="dish.image" [alt]="dish.name" (click)="incrementProduct(dish)" />
@@ -96,9 +119,12 @@ interface PaymentEntry {
 
             <!-- Boissons Tab -->
             <mat-tab label="Boissons">
-              <div class="products-grid">
+              <div *ngIf="filteredDrinks.length === 0" class="empty-state">
+                Aucune boisson ne correspond à la recherche.
+              </div>
+              <div class="products-grid" *ngIf="filteredDrinks.length > 0">
                 <div
-                  *ngFor="let drink of drinks"
+                  *ngFor="let drink of filteredDrinks"
                   class="product-card"
                 >
                   <img class="product-image" [src]="drink.image" [alt]="drink.name" (click)="incrementProduct(drink)" />
@@ -119,9 +145,12 @@ interface PaymentEntry {
 
             <!-- Desserts Tab -->
             <mat-tab label="Desserts">
-              <div class="products-grid">
+              <div *ngIf="filteredDesserts.length === 0" class="empty-state">
+                Aucun dessert ne correspond à la recherche.
+              </div>
+              <div class="products-grid" *ngIf="filteredDesserts.length > 0">
                 <div
-                  *ngFor="let dessert of desserts"
+                  *ngFor="let dessert of filteredDesserts"
                   class="product-card"
                 >
                   <img class="product-image" [src]="dessert.image" [alt]="dessert.name" (click)="incrementProduct(dessert)" />
@@ -311,11 +340,78 @@ interface PaymentEntry {
       padding: 1rem;
     }
 
+    .express-toolbar {
+      display: grid;
+      grid-template-columns: minmax(220px, 1fr) auto auto;
+      gap: 0.75rem;
+      align-items: center;
+      background: linear-gradient(135deg, #fff8ec, #eef6ff);
+      border: 1px solid #e6e9f5;
+      border-radius: 14px;
+      padding: 0.7rem;
+      margin-bottom: 0.9rem;
+    }
+
+    .search-field {
+      width: 100%;
+      margin-bottom: -1.1rem;
+    }
+
+    .live-stats {
+      display: flex;
+      gap: 0.45rem;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .stat-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      padding: 0.3rem 0.6rem;
+      border-radius: 999px;
+      border: 1px solid #d6deef;
+      background: #fff;
+      color: #3a486f;
+      font-size: 0.82rem;
+      font-weight: 700;
+    }
+
+    .stat-chip mat-icon {
+      width: 1rem;
+      height: 1rem;
+      font-size: 1rem;
+      color: #dd6c20;
+    }
+
+    .stat-chip.total {
+      border-color: #c9d9ff;
+      color: #1f4f9d;
+      background: #f3f7ff;
+    }
+
+    .clear-search-btn {
+      border-color: #8ea0cc !important;
+      color: #4d5b82;
+      white-space: nowrap;
+    }
+
     .products-grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
       gap: 1rem;
       padding: 1rem 0;
+    }
+
+    .empty-state {
+      border: 1px dashed #d9e0f0;
+      border-radius: 12px;
+      background: #f9fbff;
+      color: #5e6c91;
+      text-align: center;
+      padding: 1rem;
+      margin: 0.8rem 0;
+      font-weight: 600;
     }
 
     .product-card {
@@ -583,6 +679,14 @@ interface PaymentEntry {
         gap: 0.6rem;
       }
 
+      .express-toolbar {
+        grid-template-columns: 1fr;
+      }
+
+      .live-stats {
+        justify-content: flex-start;
+      }
+
       .products-grid {
         grid-template-columns: repeat(2, 1fr);
       }
@@ -619,6 +723,7 @@ export class SaleDisplayComponent implements OnInit {
   paymentMethods: PaymentOption[] = ['CB', 'PayPal', 'Wero', 'Espèces'];
   selectedTabIndex = 0;
   customerFirstName = '';
+  productSearch = '';
   orderTotalValue = 0;
   orderItemCount = 0;
   orderItems: OrderItem[] = [];
@@ -662,6 +767,38 @@ export class SaleDisplayComponent implements OnInit {
     this.incrementProduct(product);
   }
 
+  clearSearch(): void {
+    this.productSearch = '';
+  }
+
+  get filteredDishes(): MenuDisplayItem[] {
+    return this.filterProducts(this.dishes);
+  }
+
+  get filteredDrinks(): MenuDisplayItem[] {
+    return this.filterProducts(this.drinks);
+  }
+
+  get filteredDesserts(): MenuDisplayItem[] {
+    return this.filterProducts(this.desserts);
+  }
+
+  get selectedDishUnits(): number {
+    return this.sumCategoryUnits('dish');
+  }
+
+  get selectedDrinkUnits(): number {
+    return this.sumCategoryUnits('drink');
+  }
+
+  get selectedDessertUnits(): number {
+    return this.sumCategoryUnits('dessert');
+  }
+
+  get totalSelectedUnits(): number {
+    return this.orderItems.reduce((sum, item) => sum + item.quantity, 0);
+  }
+
   getProductQuantity(productName: string): number {
     return this.orderItems.find(i => i.productId === productName)?.quantity ?? 0;
   }
@@ -690,6 +827,27 @@ export class SaleDisplayComponent implements OnInit {
     } else {
       this.store.dispatch(OrdersActions.removeItem({ productId: product.name }));
     }
+  }
+
+  private normalizeLabel(value: string): string {
+    return value
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
+  }
+
+  private filterProducts(products: MenuDisplayItem[]): MenuDisplayItem[] {
+    const query = this.normalizeLabel(this.productSearch.trim());
+    if (!query) {
+      return products;
+    }
+    return products.filter((product) => this.normalizeLabel(product.name).includes(query));
+  }
+
+  private sumCategoryUnits(category: 'dish' | 'drink' | 'dessert'): number {
+    return this.orderItems
+      .filter((item) => item.category === category)
+      .reduce((sum, item) => sum + item.quantity, 0);
   }
 
   private toDisplayItems(
