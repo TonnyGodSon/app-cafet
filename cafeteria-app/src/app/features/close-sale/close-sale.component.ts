@@ -522,38 +522,72 @@ export class CloseSaleComponent implements OnInit {
       const workbook = new ExcelJS.Workbook();
       workbook.creator = 'CaFaith Normandie';
       workbook.created = new Date();
+      const sheet = workbook.addWorksheet('Rapport vente');
 
-      const addSheetWithTable = (
-        sheetName: string,
-        columns: { header: string; key: string; width: number }[],
-        rows: Record<string, string | number>[],
-        headerArgb: string
-      ) => {
-        const sheet = workbook.addWorksheet(sheetName);
-        sheet.columns = columns;
-        sheet.getRow(1).eachCell((cell) => {
-          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: headerArgb } };
+      // Largeur fixe par colonne pour garder un rapport lisible en un seul onglet.
+      sheet.columns = [
+        { width: 32 },
+        { width: 58 },
+        { width: 18 },
+        { width: 36 },
+        { width: 24 }
+      ];
+
+      const writeSection = (
+        sectionTitle: string,
+        headers: string[],
+        rows: Array<Array<string | number>>,
+        titleArgb: string,
+        headerArgb: string,
+        startRow: number
+      ): number => {
+        const titleCell = sheet.getCell(startRow, 1);
+        titleCell.value = sectionTitle;
+        titleCell.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 12 };
+        titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: titleArgb } };
+        titleCell.alignment = { horizontal: 'left', vertical: 'middle' };
+        sheet.mergeCells(startRow, 1, startRow, Math.max(headers.length, 5));
+        sheet.getRow(startRow).height = 22;
+
+        const headerRowNumber = startRow + 1;
+        headers.forEach((header, idx) => {
+          const cell = sheet.getCell(headerRowNumber, idx + 1);
+          cell.value = header;
           cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
-          cell.alignment = { vertical: 'middle', horizontal: 'center' };
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: headerArgb } };
+          cell.alignment = { horizontal: 'center', vertical: 'middle' };
         });
-        rows.forEach(row => sheet.addRow(row));
-        sheet.getRow(1).height = 20;
+
+        const safeRows = rows.length > 0 ? rows : [['Aucune donnée', '-']];
+        let currentRow = headerRowNumber;
+        safeRows.forEach((row) => {
+          currentRow += 1;
+          row.forEach((value, idx) => {
+            const cell = sheet.getCell(currentRow, idx + 1);
+            cell.value = value as any;
+            cell.alignment = {
+              vertical: 'middle',
+              horizontal: typeof value === 'number' ? 'right' : 'left'
+            };
+          });
+        });
+
+        // Bordures sur l'ensemble du bloc.
+        for (let r = headerRowNumber; r <= currentRow; r++) {
+          for (let c = 1; c <= headers.length; c++) {
+            sheet.getCell(r, c).border = {
+              top: { style: 'thin', color: { argb: 'FFD9DFEE' } },
+              left: { style: 'thin', color: { argb: 'FFD9DFEE' } },
+              bottom: { style: 'thin', color: { argb: 'FFD9DFEE' } },
+              right: { style: 'thin', color: { argb: 'FFD9DFEE' } }
+            };
+          }
+        }
+
+        return currentRow + 2;
       };
 
-      // Feuille 1 : Détail commandes
-      addSheetWithTable('Commandes', [
-        { header: 'Client', key: 'client', width: 20 },
-        { header: 'Articles', key: 'articles', width: 50 },
-        { header: 'Total (€)', key: 'total', width: 15 },
-        { header: 'Paiement', key: 'paiement', width: 30 },
-        { header: 'Vendeur', key: 'vendeur', width: 20 }
-      ], orders.map(o => ({
-        client: o.customerFirstName || '-',
-        articles: o.items.map(i => `${i.quantity}x ${i.productName}`).join(', ') || '-',
-        total: formatMoney(o.totalPrice),
-        paiement: paymentDisplay(o),
-        vendeur: o.sellerName || sellerFallback
-      })), 'FF34495E');
+      let nextRow = 1;
 
       // Agrégats
       const salesBySeller: Record<string, number> = {};
@@ -587,53 +621,90 @@ export class CloseSaleComponent implements OnInit {
       });
 
       const toRows = (rec: Record<string, number>) =>
-        Object.entries(rec).sort((a, b) => b[1] - a[1]).map(([label, value]) => ({ label, value }));
+        Object.entries(rec).sort((a, b) => b[1] - a[1]).map(([label, value]) => [label, formatMoney(value)] as Array<string | number>);
 
-      addSheetWithTable('Ventes par vendeur', [
-        { header: 'Vendeur', key: 'label', width: 30 },
-        { header: 'Montant (€)', key: 'value', width: 20 }
-      ], toRows(salesBySeller), 'FF2980B9');
+      nextRow = writeSection(
+        'Détail des commandes',
+        ['Client', 'Commandes', 'Total (€)', 'Moyen de paiement', 'Vendeur'],
+        orders.map((o) => [
+          o.customerFirstName || '-',
+          o.items.map((i) => `${i.quantity}x ${i.productName}`).join(', ') || '-',
+          formatMoney(o.totalPrice),
+          paymentDisplay(o),
+          o.sellerName || sellerFallback
+        ]),
+        'FF2C3E50',
+        'FF34495E',
+        nextRow
+      );
 
-      addSheetWithTable('Par moyen de paiement', [
-        { header: 'Moyen de paiement', key: 'label', width: 30 },
-        { header: 'Montant (€)', key: 'value', width: 20 }
-      ], toRows(salesByPayment), 'FF27AE60');
+      nextRow = writeSection(
+        'Total des ventes par vendeur',
+        ['Vendeur', 'Montant (€)'],
+        toRows(salesBySeller),
+        'FF2471A3',
+        'FF2980B9',
+        nextRow
+      );
 
-      addSheetWithTable('Nombre de paiements', [
-        { header: 'Moyen de paiement', key: 'label', width: 30 },
-        { header: 'Nombre', key: 'value', width: 20 }
-      ], toRows(paymentCountByMethod), 'FF16A085');
+      nextRow = writeSection(
+        'Total des ventes par moyen de paiement',
+        ['Moyen de paiement', 'Montant (€)'],
+        toRows(salesByPayment),
+        'FF1D8348',
+        'FF27AE60',
+        nextRow
+      );
 
-      addSheetWithTable('Plats vendus', [
-        { header: 'Plat', key: 'label', width: 30 },
-        { header: 'Quantité', key: 'value', width: 20 }
-      ], toRows(dishCounts), 'FF8E44AD');
+      nextRow = writeSection(
+        'Nombre de paiements par moyen',
+        ['Moyen de paiement', 'Nombre'],
+        toRows(paymentCountByMethod),
+        'FF117A65',
+        'FF16A085',
+        nextRow
+      );
 
-      addSheetWithTable('Boissons vendues', [
-        { header: 'Boisson', key: 'label', width: 30 },
-        { header: 'Quantité', key: 'value', width: 20 }
-      ], toRows(drinkCounts), 'FFD35400');
+      nextRow = writeSection(
+        'Nombre de plats vendus par plat',
+        ['Plat', 'Quantité'],
+        toRows(dishCounts),
+        'FF7D3C98',
+        'FF8E44AD',
+        nextRow
+      );
 
-      addSheetWithTable('Desserts vendus', [
-        { header: 'Dessert', key: 'label', width: 30 },
-        { header: 'Quantité', key: 'value', width: 20 }
-      ], toRows(dessertCounts), 'FFC0392B');
+      nextRow = writeSection(
+        'Nombre de boissons vendues par type',
+        ['Boisson', 'Quantité'],
+        toRows(drinkCounts),
+        'FFAF601A',
+        'FFD68910',
+        nextRow
+      );
 
-      // Récapitulatif
-      const summarySheet = workbook.addWorksheet('Récapitulatif');
-      summarySheet.columns = [
-        { header: 'Indicateur', key: 'label', width: 35 },
-        { header: 'Valeur', key: 'value', width: 20 }
-      ];
-      summarySheet.getRow(1).eachCell(cell => {
-        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF2C3E50' } };
-        cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
-        cell.alignment = { vertical: 'middle', horizontal: 'center' };
-      });
-      summarySheet.addRow({ label: 'Code vente', value: saleCode });
-      summarySheet.addRow({ label: 'Date', value: this.getCurrentDate() });
-      summarySheet.addRow({ label: 'Nombre de commandes', value: orders.length });
-      summarySheet.addRow({ label: 'Recette du jour (€)', value: formatMoney(totalRevenue) });
+      nextRow = writeSection(
+        'Nombre de desserts vendus par type',
+        ['Dessert', 'Quantité'],
+        toRows(dessertCounts),
+        'FF922B21',
+        'FFC0392B',
+        nextRow
+      );
+
+      writeSection(
+        'Récapitulatif',
+        ['Indicateur', 'Valeur'],
+        [
+          ['Code vente', saleCode],
+          ['Date', this.getCurrentDate()],
+          ['Nombre de commandes', orders.length],
+          ['Recette du jour (€)', formatMoney(totalRevenue)]
+        ],
+        'FF212F3D',
+        'FF2C3E50',
+        nextRow
+      );
 
       const buffer = await workbook.xlsx.writeBuffer();
       const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
