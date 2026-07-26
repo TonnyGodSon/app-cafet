@@ -12,7 +12,6 @@ import java.util.List;
 @RestController
 @RequestMapping("/catalog")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "${app.cors.allowed-origins}")
 public class CatalogController {
     private final CatalogService catalogService;
 

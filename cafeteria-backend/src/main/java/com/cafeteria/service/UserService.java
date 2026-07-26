@@ -15,7 +15,9 @@ public class UserService {
     private final UserRepository userRepository;
 
     public UserDTO authenticateUser(String firstName, String phoneNumber) {
-        User user = userRepository.findByFirstNameAndPhoneNumber(firstName, phoneNumber)
+        String normalizedFirstName = firstName == null ? "" : firstName.trim();
+        String normalizedPhoneNumber = phoneNumber == null ? "" : phoneNumber.trim();
+        User user = userRepository.findByFirstNameAndPhoneNumber(normalizedFirstName, normalizedPhoneNumber)
                 .orElse(null);
         return user != null ? convertToDTO(user) : null;
     }

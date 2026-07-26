@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { Observable, of } from 'rxjs';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { Observable, of, throwError } from 'rxjs';
 import { User, MOCK_USERS } from '../models';
 import { catchError } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
@@ -17,7 +17,17 @@ export class AuthService {
     return this.http.post<User>(`${this.apiUrl}/login`, {}, {
       params: { firstName, phoneNumber }
     }).pipe(
-      catchError(() => of(null))
+      catchError((error: HttpErrorResponse) => {
+        if (error.status === 401) {
+          return of(null); // mauvais identifiants
+        }
+        // erreur réseau / CORS / serveur → on propage avec message lisible
+        return throwError(() => new Error(
+          error.status === 0
+            ? 'Impossible de joindre le serveur. Réessayez dans quelques instants.'
+            : `Erreur serveur (${error.status})`
+        ));
+      })
     );
   }
 
