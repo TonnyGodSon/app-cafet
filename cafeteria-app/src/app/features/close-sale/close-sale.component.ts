@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, PLATFORM_ID, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, PLATFORM_ID, ChangeDetectorRef } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { Store } from '@ngrx/store';
@@ -6,10 +6,12 @@ import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatIconModule } from '@angular/material/icon';
-import { Observable, firstValueFrom } from 'rxjs';
+import { Observable, Subject, firstValueFrom } from 'rxjs';
+import { map, switchMap, takeUntil } from 'rxjs/operators';
 import { selectActiveSale, selectActiveSaleCode } from '../../store/sales/sales.selectors';
 import { SaleService, OrderService } from '../../core/services';
 import * as AuthActions from '../../store/auth/auth.actions';
+import * as SalesActions from '../../store/sales/sales.actions';
 import { Order, Sale } from '../../core/models';
 
 type PaymentMethodLabel = 'CB' | 'PayPal' | 'Wero' | 'Espèces';
@@ -172,13 +174,14 @@ type PaymentMethodLabel = 'CB' | 'PayPal' | 'Wero' | 'Espèces';
     }
   `]
 })
-export class CloseSaleComponent implements OnInit {
+export class CloseSaleComponent implements OnInit, OnDestroy {
   private readonly store = inject(Store);
   private readonly router = inject(Router);
   private readonly saleService = inject(SaleService);
   private readonly orderService = inject(OrderService);
   private readonly platformId = inject(PLATFORM_ID);
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly destroy$ = new Subject<void>();
 
   saleCode$!: Observable<string | null>;
   activeSale$!: Observable<Sale | null>;
@@ -189,17 +192,23 @@ export class CloseSaleComponent implements OnInit {
   errorMessage = '';
 
   ngOnInit() {
-    this.saleCode$ = this.store.select(selectActiveSaleCode);
-    this.activeSale$ = this.store.select(selectActiveSale);
-    this.totalOrders$ = new Observable(observer => {
-      this.saleCode$.subscribe(saleCode => {
-        if (saleCode) {
-          this.orderService.getOrdersBySaleCode(saleCode).subscribe(orders => {
-            observer.next(orders.length);
-          });
-        }
-      });
-    });
+    this.saleCode$    = this.store.select(selectActiveSaleCode);
+    this.activeSale$  = this.store.select(selectActiveSale);
+
+    // switchMap annule l'appel précédent si le code vente change, pas de fuite mémoire
+    this.totalOrders$ = this.saleCode$.pipe(
+      takeUntil(this.destroy$),
+      switchMap((saleCode) =>
+        saleCode
+          ? this.orderService.getOrdersBySaleCode(saleCode).pipe(map((orders) => orders.length))
+          : [0]
+      )
+    );
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 
   async onGeneratePDF() {
@@ -742,7 +751,12 @@ export class CloseSaleComponent implements OnInit {
     this.successMessage = 'Client mail ouvert avec succès.';
   }
 
-  onLogout() {
+  async onLogout() {
+    // Clôturer la vente si elle est encore ouverte
+    const activeSale = await firstValueFrom(this.activeSale$);
+    if (activeSale?.status === 'open' && activeSale.saleCode) {
+      this.store.dispatch(SalesActions.closeSale({ saleCode: activeSale.saleCode }));
+    }
     this.store.dispatch(AuthActions.logout());
     this.router.navigate(['/login']);
   }

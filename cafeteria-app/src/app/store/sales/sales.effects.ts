@@ -47,7 +47,9 @@ export class SalesEffects {
             if (sale) {
               return SalesActions.joinSaleSuccess({ sale });
             } else {
-              return SalesActions.joinSaleFailure({ error: 'Sale not found' });
+              return SalesActions.joinSaleFailure({
+                error: 'Vente introuvable. Vérifiez le code ou votre connexion internet.'
+              });
             }
           }),
           catchError((error) =>

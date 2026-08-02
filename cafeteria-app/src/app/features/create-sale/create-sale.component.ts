@@ -12,6 +12,7 @@ import { MatNativeDateModule } from '@angular/material/core';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatIconModule } from '@angular/material/icon';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import * as SalesActions from '../../store/sales/sales.actions';
 import { MOCK_DISHES, MOCK_DRINKS, MOCK_DESSERTS, MOCK_USERS } from '../../core/models';
 import { Sale, SaleItemWithSpecs } from '../../core/models';
@@ -33,7 +34,8 @@ import { AuthService, CatalogCategory, CatalogService } from '../../core/service
     MatNativeDateModule,
     MatTabsModule,
     MatProgressSpinnerModule,
-    MatIconModule
+    MatIconModule,
+    MatSnackBarModule
   ],
   template: `
     <div class="create-sale-container">
@@ -427,6 +429,7 @@ export class CreateSaleComponent implements OnInit {
   private readonly store = inject(Store);
   private readonly authService = inject(AuthService);
   private readonly catalogService = inject(CatalogService);
+  private readonly snackBar = inject(MatSnackBar);
 
   saleForm!: FormGroup;
   dishes: Array<{ name: string }> = [];
@@ -505,7 +508,7 @@ export class CreateSaleComponent implements OnInit {
     const phoneNumber = this.newSellerPhone.trim();
 
     if (!firstName || !phoneNumber) {
-      alert('Veuillez saisir le prénom et le téléphone de la vendeuse.');
+      this.snackBar.open('Veuillez saisir le prénom et le téléphone de la vendeuse.', 'OK', { duration: 3000 });
       return;
     }
 
@@ -514,9 +517,10 @@ export class CreateSaleComponent implements OnInit {
         this.newSellerName = '';
         this.newSellerPhone = '';
         this.loadUsers();
+        this.snackBar.open('Vendeuse ajoutée avec succès.', 'OK', { duration: 2500 });
       },
       error: () => {
-        alert('Impossible d\'ajouter cette vendeuse. Vérifiez les informations.');
+        this.snackBar.open("Impossible d'ajouter cette vendeuse. Vérifiez les informations.", 'OK', { duration: 3500 });
       }
     });
   }
@@ -529,13 +533,14 @@ export class CreateSaleComponent implements OnInit {
 
     this.catalogService.createItem(name, category).subscribe({
       next: () => {
-        if (category === 'dish') this.newDishName = '';
-        if (category === 'drink') this.newDrinkName = '';
+        if (category === 'dish')    this.newDishName    = '';
+        if (category === 'drink')   this.newDrinkName   = '';
         if (category === 'dessert') this.newDessertName = '';
         this.loadCatalog();
+        this.snackBar.open('Élément ajouté au catalogue.', 'OK', { duration: 2500 });
       },
       error: () => {
-        alert('Impossible d\'ajouter cet élément au catalogue.');
+        this.snackBar.open("Impossible d'ajouter cet élément au catalogue.", 'OK', { duration: 3500 });
       }
     });
   }
@@ -586,17 +591,16 @@ export class CreateSaleComponent implements OnInit {
 
   onCreateSale() {
     if (!this.saleForm.valid) {
-      alert('Veuillez remplir la date et le vendeur/se');
+      this.snackBar.open('Veuillez remplir la date et le vendeur/se.', 'OK', { duration: 3000 });
       return;
     }
 
-    // Check that at least one product is selected
-    const dishes = this.extractItems('dish');
-    const drinks = this.extractItems('drink');
+    const dishes   = this.extractItems('dish');
+    const drinks   = this.extractItems('drink');
     const desserts = this.extractItems('dessert');
-    
+
     if (dishes.length === 0 && drinks.length === 0 && desserts.length === 0) {
-      alert('Veuillez sélectionner au moins un produit');
+      this.snackBar.open('Veuillez sélectionner au moins un produit.', 'OK', { duration: 3000 });
       return;
     }
 

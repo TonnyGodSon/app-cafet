@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, of, from } from 'rxjs';
-import { Sale, SaleDisplay } from '../models';
+import { Sale } from '../models';
 import { catchError, map } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
 import { ConnectivityService } from './connectivity.service';
@@ -46,7 +46,9 @@ export class SaleService {
    */
   createSale(sale: Sale, bypassOffline = false): Observable<Sale> {
     if (!bypassOffline && !this.connectivity.isOnline) {
-      const localSaleCode = `OFF-${sale.saleCode}`;
+      // Génère un code local lisible même sans réseau
+      const code = this.generateSaleCode();
+      const localSaleCode = `OFF-${code}`;
       const localSale: Sale = {
         ...sale,
         id: `local-${Date.now()}`,

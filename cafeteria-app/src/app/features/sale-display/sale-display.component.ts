@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, PLATFORM_ID } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, PLATFORM_ID } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -12,7 +12,8 @@ import { MatBadgeModule } from '@angular/material/badge';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { Observable, firstValueFrom } from 'rxjs';
+import { Observable, Subject, firstValueFrom } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
 import { selectActiveSale, selectActiveSaleCode } from '../../store/sales/sales.selectors';
 import { selectOrderItems, selectOrderTotal } from '../../store/orders/orders.selectors';
 import { MOCK_DISHES, MOCK_DRINKS, MOCK_DESSERTS, OrderItem, PaymentBreakdown, PaymentMethod, SaleItemWithSpecs } from '../../core/models';
@@ -775,11 +776,12 @@ interface PaymentEntry {
     }
   `]
 })
-export class SaleDisplayComponent implements OnInit {
+export class SaleDisplayComponent implements OnInit, OnDestroy {
   private readonly store = inject(Store);
   private readonly router = inject(Router);
   private readonly snackBar = inject(MatSnackBar);
   private readonly platformId = inject(PLATFORM_ID);
+  private readonly destroy$ = new Subject<void>();
 
   dishes: MenuDisplayItem[] = [];
   drinks: MenuDisplayItem[] = [];
@@ -814,18 +816,24 @@ export class SaleDisplayComponent implements OnInit {
     this.items$ = this.store.select(selectOrderItems);
     this.total$ = this.store.select(selectOrderTotal);
     this.saleCode$ = this.store.select(selectActiveSaleCode);
-    this.items$.subscribe((items) => {
+
+    this.items$.pipe(takeUntil(this.destroy$)).subscribe((items) => {
       this.orderItemCount = items.length;
       this.orderItems = items;
     });
-    this.total$.subscribe((value) => {
+    this.total$.pipe(takeUntil(this.destroy$)).subscribe((value) => {
       this.orderTotalValue = value;
     });
-    this.activeSale$.subscribe((sale) => {
-      this.dishes = this.toDisplayItems(sale?.dishes || [], 'dish');
-      this.drinks = this.toDisplayItems(sale?.drinks || [], 'drink');
+    this.activeSale$.pipe(takeUntil(this.destroy$)).subscribe((sale) => {
+      this.dishes   = this.toDisplayItems(sale?.dishes   || [], 'dish');
+      this.drinks   = this.toDisplayItems(sale?.drinks   || [], 'drink');
       this.desserts = this.toDisplayItems(sale?.desserts || [], 'dessert');
     });
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 
   selectProduct(product: MenuDisplayItem) {
