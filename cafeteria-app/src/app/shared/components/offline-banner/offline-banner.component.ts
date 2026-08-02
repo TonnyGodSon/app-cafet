@@ -1,6 +1,6 @@
 import { Component, inject, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Subject, combineLatest, takeUntil } from 'rxjs';
+import { Observable, Subject, takeUntil } from 'rxjs';
 import { ConnectivityService } from '../../../core/services/connectivity.service';
 import { SyncService, SyncStatus } from '../../../core/services/sync.service';
 
@@ -156,24 +156,33 @@ export class OfflineBannerComponent implements OnInit, OnDestroy {
   visible = false;
 
   ngOnInit(): void {
-    combineLatest([
-      this.connectivity.isOnline$,
-      this.sync.status$,
-      this.sync.pendingCount$
-    ])
+    this.connectivity.isOnline$
       .pipe(takeUntil(this.destroy$))
-      .subscribe(([online, status, count]) => {
+      .subscribe((online: boolean) => {
         this.isOnline = online;
-        this.status = status;
-        this.pendingCount = count;
-
-        // Affiche le bandeau si : hors-ligne, syncing, success ou erreur
-        this.visible =
-          !online ||
-          status === 'syncing' ||
-          status === 'success' ||
-          status === 'error';
+        this.updateVisibility();
       });
+
+    this.sync.status$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((status: SyncStatus) => {
+        this.status = status;
+        this.updateVisibility();
+      });
+
+    this.sync.pendingCount$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((count: number) => {
+        this.pendingCount = count;
+      });
+  }
+
+  private updateVisibility(): void {
+    this.visible =
+      !this.isOnline ||
+      this.status === 'syncing' ||
+      this.status === 'success' ||
+      this.status === 'error';
   }
 
   ngOnDestroy(): void {

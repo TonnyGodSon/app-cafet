@@ -20,15 +20,17 @@ export class OrderService {
    * Crée une commande.
    * • En ligne  → appel HTTP direct.
    * • Hors ligne → stocke dans la file locale et retourne une commande locale.
+   * @param bypassOffline  Passer à true pour forcer l'appel HTTP (utilisé par SyncService).
    */
   createOrder(
     saleCode: string,
     items: OrderItem[],
     paymentMethod: PaymentMethod,
     customerFirstName: string,
-    paymentBreakdown?: PaymentBreakdown
+    paymentBreakdown?: PaymentBreakdown,
+    bypassOffline = false
   ): Observable<Order> {
-    if (!this.connectivity.isOnline) {
+    if (!bypassOffline && !this.connectivity.isOnline) {
       const localOrder: Order = {
         id: `local-${Date.now()}`,
         saleCode,
@@ -48,17 +50,7 @@ export class OrderService {
       };
       return from(this.queue.enqueue(op)).pipe(map(() => localOrder));
     }
-    return this.createOrderOnServer(saleCode, items, paymentMethod, customerFirstName, paymentBreakdown);
-  }
-
-  /** Appel HTTP direct (utilisé aussi par SyncService lors de la resynchronisation). */
-  createOrderOnServer(
-    saleCode: string,
-    items: OrderItem[],
-    paymentMethod: PaymentMethod,
-    customerFirstName: string,
-    paymentBreakdown?: PaymentBreakdown
-  ): Observable<Order> {
+    // ── Appel HTTP ──
     const request = {
       saleCode,
       customerFirstName,

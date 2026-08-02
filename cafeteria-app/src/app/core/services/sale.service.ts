@@ -42,9 +42,10 @@ export class SaleService {
    * Crée une vente.
    * • En ligne  → appel HTTP direct.
    * • Hors ligne → stocke dans la file locale et retourne une vente locale.
+   * @param bypassOffline  Passer à true pour forcer l'appel HTTP (utilisé par SyncService).
    */
-  createSale(sale: Sale): Observable<Sale> {
-    if (!this.connectivity.isOnline) {
+  createSale(sale: Sale, bypassOffline = false): Observable<Sale> {
+    if (!bypassOffline && !this.connectivity.isOnline) {
       const localSaleCode = `OFF-${sale.saleCode}`;
       const localSale: Sale = {
         ...sale,
@@ -62,11 +63,7 @@ export class SaleService {
       };
       return from(this.queue.enqueue(op)).pipe(map(() => localSale));
     }
-    return this.createSaleOnServer(sale);
-  }
-
-  /** Appel HTTP direct (utilisé aussi par SyncService lors de la resynchronisation). */
-  createSaleOnServer(sale: Sale): Observable<Sale> {
+    // ── Appel HTTP ──
     const dateObj = new Date(sale.date);
     const isoDate = dateObj.toISOString().split('.')[0];
     const request = {
@@ -109,9 +106,10 @@ export class SaleService {
    * Clôture une vente.
    * • En ligne  → appel HTTP direct.
    * • Hors ligne → stocke dans la file et retourne la vente avec statut 'closed'.
+   * @param bypassOffline  Passer à true pour forcer l'appel HTTP (utilisé par SyncService).
    */
-  closeSale(saleCode: string, currentSale?: Sale): Observable<Sale | null> {
-    if (!this.connectivity.isOnline) {
+  closeSale(saleCode: string, currentSale?: Sale, bypassOffline = false): Observable<Sale | null> {
+    if (!bypassOffline && !this.connectivity.isOnline) {
       const op = {
         id: crypto.randomUUID(),
         type: 'CLOSE_SALE' as const,
@@ -124,11 +122,6 @@ export class SaleService {
         map(() => currentSale ? { ...currentSale, status: 'closed' as const } : null)
       );
     }
-    return this.closeSaleOnServer(saleCode);
-  }
-
-  /** Appel HTTP direct (utilisé aussi par SyncService). */
-  closeSaleOnServer(saleCode: string): Observable<Sale | null> {
     return this.http.put<SaleApiResponse>(`${this.apiUrl}/${saleCode}/close`, {}).pipe(
       map((apiSale) => this.normalizeSale(apiSale)),
       catchError(() => of(null))

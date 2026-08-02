@@ -1,6 +1,6 @@
 import { Injectable, PLATFORM_ID, inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
-import { BehaviorSubject } from 'rxjs';
+import { BehaviorSubject, Observable } from 'rxjs';
 import { distinctUntilChanged } from 'rxjs/operators';
 
 @Injectable({ providedIn: 'root' })
@@ -12,7 +12,7 @@ export class ConnectivityService {
   );
 
   /** Observable du statut réseau (true = en ligne, false = hors connexion) */
-  readonly isOnline$ = this._isOnline$.asObservable().pipe(distinctUntilChanged());
+  readonly isOnline$: Observable<boolean> = this._isOnline$.asObservable().pipe(distinctUntilChanged());
 
   get isOnline(): boolean {
     return this._isOnline$.value;

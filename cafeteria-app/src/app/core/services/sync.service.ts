@@ -1,9 +1,10 @@
 import { Injectable, inject } from '@angular/core';
-import { BehaviorSubject, filter, firstValueFrom } from 'rxjs';
+import { BehaviorSubject, Observable, filter, firstValueFrom } from 'rxjs';
 import { ConnectivityService } from './connectivity.service';
 import { OfflineQueueService, PendingOperation } from './offline-queue.service';
 import { SaleService } from './sale.service';
 import { OrderService } from './order.service';
+import { Sale } from '../models/sale.model';
 
 export type SyncStatus = 'idle' | 'syncing' | 'success' | 'error';
 
@@ -18,9 +19,9 @@ export class SyncService {
   private readonly _pendingCount$ = new BehaviorSubject<number>(0);
 
   /** Statut courant de la synchronisation */
-  readonly status$ = this._status$.asObservable();
+  readonly status$: Observable<SyncStatus> = this._status$.asObservable();
   /** Nombre d'opérations en attente de sync */
-  readonly pendingCount$ = this._pendingCount$.asObservable();
+  readonly pendingCount$: Observable<number> = this._pendingCount$.asObservable();
 
   private isSyncing = false;
 
@@ -69,7 +70,6 @@ export class SyncService {
       this._status$.next('error');
     } else {
       this._status$.next('success');
-      // Retour à idle après 4 secondes
       setTimeout(() => {
         if (this._status$.value === 'success') {
           this._status$.next('idle');
@@ -89,28 +89,37 @@ export class SyncService {
     console.log(`[Sync] Traitement de l'opération : ${op.type}`, op.payload);
 
     if (op.type === 'CREATE_SALE') {
-      const sale = await firstValueFrom(this.saleService.createSaleOnServer(op.payload));
+      // bypassOffline=true → force l'appel HTTP même si toujours "hors-ligne"
+      const sale: Sale = await firstValueFrom(
+        this.saleService.createSale(op.payload as Sale, true)
+      );
       if (op.localSaleCode && sale?.saleCode) {
         await this.queue.setSaleCodeMapping(op.localSaleCode, sale.saleCode);
         console.log(`[Sync] Mapping code vente : ${op.localSaleCode} → ${sale.saleCode}`);
       }
+
     } else if (op.type === 'CREATE_ORDER') {
       const p = op.payload;
       // Résolution du vrai code vente (si la vente était aussi hors-ligne)
-      const realSaleCode = await this.queue.getRealSaleCode(p.saleCode);
+      const realSaleCode = await this.queue.getRealSaleCode(p.saleCode as string);
       await firstValueFrom(
-        this.orderService.createOrderOnServer(
+        this.orderService.createOrder(
           realSaleCode,
           p.items,
           p.paymentMethod,
           p.customerFirstName,
-          p.paymentBreakdown
+          p.paymentBreakdown,
+          true // bypassOffline
         )
       );
+
     } else if (op.type === 'CLOSE_SALE') {
-      const realSaleCode = await this.queue.getRealSaleCode(op.payload.saleCode);
-      await firstValueFrom(this.saleService.closeSaleOnServer(realSaleCode));
+      const realSaleCode = await this.queue.getRealSaleCode(
+        (op.payload as { saleCode: string }).saleCode
+      );
+      await firstValueFrom(
+        this.saleService.closeSale(realSaleCode, undefined, true /* bypassOffline */)
+      );
     }
   }
 }
-
