@@ -9,13 +9,18 @@ import {
   RouterOutlet
 } from '@angular/router';
 import { Subject, takeUntil } from 'rxjs';
+import { OfflineBannerComponent } from './shared/components/offline-banner/offline-banner.component';
+import { SyncService } from './core/services/sync.service';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, RouterOutlet],
+  imports: [CommonModule, RouterOutlet, OfflineBannerComponent],
   template: `
     <div class="app-shell">
+      <!-- Bandeau hors-ligne / synchronisation -->
+      <app-offline-banner></app-offline-banner>
+
       <div class="nav-loader" *ngIf="isNavigating">
         <img src="assets/brand/logo-food.svg" alt="Chargement" />
         <span>CaFaith Normandie</span>
@@ -103,6 +108,10 @@ import { Subject, takeUntil } from 'rxjs';
 export class App implements OnInit, OnDestroy {
   private readonly router = inject(Router);
   private readonly destroy$ = new Subject<void>();
+
+  // Injection du SyncService pour l'initialiser dès le démarrage de l'appli.
+  // Le service s'auto-configure (écoute la reconnexion) dans son constructeur.
+  private readonly _sync = inject(SyncService);
 
   isNavigating = false;
   routeAnimate = true;

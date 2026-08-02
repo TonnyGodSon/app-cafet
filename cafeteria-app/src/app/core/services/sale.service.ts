@@ -1,9 +1,11 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, of } from 'rxjs';
+import { Observable, of, from } from 'rxjs';
 import { Sale, SaleDisplay } from '../models';
 import { catchError, map } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
+import { ConnectivityService } from './connectivity.service';
+import { OfflineQueueService } from './offline-queue.service';
 
 type SaleApiItem = {
   productName: string;
@@ -25,25 +27,54 @@ type SaleApiResponse = {
   providedIn: 'root'
 })
 export class SaleService {
-  private apiUrl = `${environment.apiBaseUrl}/sales`;
-
-  constructor(private http: HttpClient) {}
+  private readonly apiUrl = `${environment.apiBaseUrl}/sales`;
+  private readonly http = inject(HttpClient);
+  private readonly connectivity = inject(ConnectivityService);
+  private readonly queue = inject(OfflineQueueService);
 
   generateSaleCode(): string {
     return Math.floor(Math.random() * 10000).toString().padStart(4, '0');
   }
 
+  // ─────────────────────── Création de vente ───────────────────────
+
+  /**
+   * Crée une vente.
+   * • En ligne  → appel HTTP direct.
+   * • Hors ligne → stocke dans la file locale et retourne une vente locale.
+   */
   createSale(sale: Sale): Observable<Sale> {
-    // Format date to ISO_DATE_TIME format (YYYY-MM-DDTHH:mm:ss)
+    if (!this.connectivity.isOnline) {
+      const localSaleCode = `OFF-${sale.saleCode}`;
+      const localSale: Sale = {
+        ...sale,
+        id: `local-${Date.now()}`,
+        saleCode: localSaleCode,
+        status: 'open'
+      };
+      const op = {
+        id: crypto.randomUUID(),
+        type: 'CREATE_SALE' as const,
+        payload: sale,
+        localSaleCode,
+        createdAt: Date.now(),
+        retryCount: 0
+      };
+      return from(this.queue.enqueue(op)).pipe(map(() => localSale));
+    }
+    return this.createSaleOnServer(sale);
+  }
+
+  /** Appel HTTP direct (utilisé aussi par SyncService lors de la resynchronisation). */
+  createSaleOnServer(sale: Sale): Observable<Sale> {
     const dateObj = new Date(sale.date);
-    const isoDate = dateObj.toISOString().split('.')[0]; // Remove milliseconds
-    
+    const isoDate = dateObj.toISOString().split('.')[0];
     const request = {
       sellerName: sale.sellerName,
       saleDate: isoDate,
-      dishes: (sale.dishes || []).map(item => ({ ...item, category: 'dish' })),
-      drinks: (sale.drinks || []).map(item => ({ ...item, category: 'drink' })),
-      desserts: (sale.desserts || []).map(item => ({ ...item, category: 'dessert' }))
+      dishes:    (sale.dishes    || []).map(item => ({ ...item, category: 'dish' })),
+      drinks:    (sale.drinks    || []).map(item => ({ ...item, category: 'drink' })),
+      desserts:  (sale.desserts  || []).map(item => ({ ...item, category: 'dessert' }))
     };
     return this.http.post<SaleApiResponse>(this.apiUrl, request).pipe(
       map((apiSale) => this.normalizeSale(apiSale)),
@@ -54,7 +85,12 @@ export class SaleService {
     );
   }
 
+  // ──────────────────────── Lecture de vente ───────────────────────
+
   getSaleByCode(saleCode: string): Observable<Sale | null> {
+    if (!this.connectivity.isOnline) {
+      return of(null);
+    }
     return this.http.get<SaleApiResponse>(`${this.apiUrl}/${saleCode}`).pipe(
       map((apiSale) => this.normalizeSale(apiSale)),
       catchError(() => of(null))
@@ -67,12 +103,39 @@ export class SaleService {
     );
   }
 
-  closeSale(saleCode: string): Observable<Sale | null> {
+  // ──────────────────────── Clôture de vente ───────────────────────
+
+  /**
+   * Clôture une vente.
+   * • En ligne  → appel HTTP direct.
+   * • Hors ligne → stocke dans la file et retourne la vente avec statut 'closed'.
+   */
+  closeSale(saleCode: string, currentSale?: Sale): Observable<Sale | null> {
+    if (!this.connectivity.isOnline) {
+      const op = {
+        id: crypto.randomUUID(),
+        type: 'CLOSE_SALE' as const,
+        payload: { saleCode },
+        localSaleCode: saleCode,
+        createdAt: Date.now(),
+        retryCount: 0
+      };
+      return from(this.queue.enqueue(op)).pipe(
+        map(() => currentSale ? { ...currentSale, status: 'closed' as const } : null)
+      );
+    }
+    return this.closeSaleOnServer(saleCode);
+  }
+
+  /** Appel HTTP direct (utilisé aussi par SyncService). */
+  closeSaleOnServer(saleCode: string): Observable<Sale | null> {
     return this.http.put<SaleApiResponse>(`${this.apiUrl}/${saleCode}/close`, {}).pipe(
       map((apiSale) => this.normalizeSale(apiSale)),
       catchError(() => of(null))
     );
   }
+
+  // ──────────────────────── Utilitaires ────────────────────────────
 
   private normalizeSale(apiSale: SaleApiResponse): Sale {
     const items = apiSale.items || [];
@@ -91,8 +154,8 @@ export class SaleService {
       saleCode: apiSale.saleCode,
       date: new Date(apiSale.saleDate),
       sellerName: apiSale.sellerName,
-      dishes: mapCategory('dish'),
-      drinks: mapCategory('drink'),
+      dishes:   mapCategory('dish'),
+      drinks:   mapCategory('drink'),
       desserts: mapCategory('dessert'),
       createdAt: new Date(apiSale.saleDate),
       status: apiSale.status
@@ -100,12 +163,10 @@ export class SaleService {
   }
 
   generatePDF(sale: Sale): Observable<string> {
-    // Mock PDF generation - will be implemented in backend
     return of('base64-encoded-pdf-data');
   }
 
   sendMailWithPDF(email: string, pdfData: string): Observable<boolean> {
-    // Mock email sending - will be implemented in backend
     console.log(`Email sent to ${email} with PDF`);
     return of(true);
   }
